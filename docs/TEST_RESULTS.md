@@ -55,8 +55,8 @@ baseline build investigation are recorded in `docs/BASELINE.md`.
 Runtime validation passed on a Samsung SM-S928B running ARM64 Android 16/API 36:
 
 - latest host APK installed successfully;
-- the sample installed only in BlackBox and was absent from Android user 0's
-  real PackageManager;
+- the sample installed only in the FridaBox private workspace and was absent
+  from Android user 0's real PackageManager;
 - Gadget paused startup before `SampleApplication.attachBaseContext` and
   `onCreate`;
 - the controller mapped port 27042 to the sample package/process and reported
@@ -119,3 +119,28 @@ Artifacts:
 The release artifact was intentionally unsigned because no production keystore
 was supplied. `apksigner` confirmed the debug APK verifies and the release APK
 does not contain a debug signature.
+
+## Legacy shell removal validation
+
+Validation date: 2026-07-20
+
+The obsolete launcher, GMS/Xposed/fake-location screens, legacy resources,
+Chinese launcher translations, bundled UI AARs, and old product documentation
+were removed. The application namespace and all host-owned source moved to
+`com.qm4rs.fridabox`; only the runtime engine's compatibility API remains under
+its upstream package namespace, with attribution retained in
+`THIRD_PARTY_NOTICES.md`.
+
+The cleanup passed app/Bcore unit tests, debug and release assembly, and the
+complete app lint/check task. On the connected Samsung SM-S928B (ARM64,
+Android 16/API 36), the new APK installed successfully, resumed
+`com.qm4rs.fridabox/.FridaBoxActivity`, restored both private guests, and launched
+`com.paeezanstudio.pesarkhande` in Clean mode through `ProxyActivity$P0` without
+a fatal exception.
+
+Final cleanup artifacts:
+
+- debug: 19,795,788 bytes, SHA-256
+  `3fabf2887b3bf1aa1a83475b18803755168b33b2111e89f15d3d1434d89994a5`;
+- release: 12,454,018 bytes, SHA-256
+  `b7e9033def3fbe25f92686ceb3a3e2f623951e8d7fdd450b172d30df25e08e8e`.

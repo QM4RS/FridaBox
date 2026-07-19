@@ -265,3 +265,49 @@ BUILD SUCCESSFUL
 - release APK: 13266764 bytes, SHA-256 caa2218194fcbe91c10d0d29a74b7401aaed53f340b8a0d6668321ddae48ddfb
 - debug signature verification: passed
 - release signature verification: intentionally unsigned; no debug key fallback
+
+=== FridaBox-only application shell cleanup (2026-07-20) ===
+
+> adb devices -l
+R5CY149SZEX device product:e3qxxx model:SM_S928B device:e3q transport_id:1
+
+> adb shell getprop ro.product.cpu.abi
+arm64-v8a
+
+> adb shell getprop ro.build.version.release
+16
+
+> adb shell getprop ro.build.version.sdk
+36
+
+> $env:FRIDABOX_NDK_PROJECT_DIR='D:\FridaBoxBuild\Bcore'; .\gradlew.bat :app:assembleDebug :Bcore:testDebugUnitTest :app:testDebugUnitTest --console=plain '-Dkotlin.compiler.execution.strategy=in-process'
+BUILD SUCCESSFUL in 46s
+
+> $env:FRIDABOX_NDK_PROJECT_DIR='D:\FridaBoxBuild\Bcore'; .\gradlew.bat :app:assembleRelease :app:check --console=plain '-Dkotlin.compiler.execution.strategy=in-process'
+BUILD SUCCESSFUL in 2m 13s
+
+> adb install -r -t D:\Android Codes\FridaBox\app\build\outputs\apk\debug\FridaBox_4.0.0_arm64-v8a-debug.apk
+Performing Streamed Install
+Success
+
+> adb shell monkey -p com.qm4rs.fridabox -c android.intent.category.LAUNCHER 1
+Events injected: 1
+
+> adb shell dumpsys activity activities
+topResumedActivity=ActivityRecord{61631798 u0 com.qm4rs.fridabox/.FridaBoxActivity t2830}
+
+The UI hierarchy identified the host package as `com.qm4rs.fridabox`, displayed
+the FridaBox product identity, and restored two private guests. The imported game
+was switched to Clean mode and launched from its card.
+
+> adb shell dumpsys activity activities
+topResumedActivity=ActivityRecord{234428585 u0 com.qm4rs.fridabox/top.niunaijun.blackbox.proxy.ProxyActivity$P0 t2831}
+
+No `FATAL EXCEPTION` or `AndroidRuntime` crash was emitted. The compatibility
+activity class above belongs to the retained runtime engine; the host launcher,
+application, namespace, source tree, and resources are FridaBox-owned.
+
+Final cleanup artifacts:
+
+- debug APK: 19795788 bytes, SHA-256 3fabf2887b3bf1aa1a83475b18803755168b33b2111e89f15d3d1434d89994a5
+- release APK: 12454018 bytes, SHA-256 b7e9033def3fbe25f92686ceb3a3e2f623951e8d7fdd450b172d30df25e08e8e

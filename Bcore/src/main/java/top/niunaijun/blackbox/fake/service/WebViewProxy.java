@@ -139,9 +139,7 @@ public class WebViewProxy extends ClassInvocationStub {
 
                     
                     String userAgent = settings.getUserAgentString();
-                    if (userAgent != null && !userAgent.contains("BlackBox")) {
-                        settings.setUserAgentString(userAgent + " BlackBox");
-                    }
+                    // Keep the guest's original user-agent; host branding must not leak into it.
 
                     
                     try {

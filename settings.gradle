@@ -33,7 +33,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NewBlackbox"
+rootProject.name = "FridaBox"
 
 include ':app'
 include(":black-reflection")

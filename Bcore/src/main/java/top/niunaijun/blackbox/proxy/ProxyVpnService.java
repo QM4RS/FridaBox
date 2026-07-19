@@ -15,7 +15,7 @@ import top.niunaijun.blackbox.utils.Slog;
 public class ProxyVpnService extends VpnService {
     private static final String TAG = "ProxyVpnService";
     private static final int NOTIFICATION_ID = 1001;
-    private static final String CHANNEL_ID = "BlackBoxVPN";
+    private static final String CHANNEL_ID = "FridaBoxVPN";
     
     private ParcelFileDescriptor mVpnInterface = null;
     private boolean mIsEstablished = false;
@@ -74,10 +74,10 @@ public class ProxyVpnService extends VpnService {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
-                "BlackBox VPN Service",
+                "FridaBox VPN Service",
                 NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("VPN service for BlackBox network access");
+            channel.setDescription("VPN service for FridaBox network access");
             channel.setShowBadge(false);
             
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
@@ -98,7 +98,7 @@ public class ProxyVpnService extends VpnService {
         }
         
         return builder
-            .setContentTitle("BlackBox VPN Active")
+            .setContentTitle("FridaBox VPN Active")
             .setContentText("Managing network access for sandboxed apps")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
@@ -124,7 +124,7 @@ public class ProxyVpnService extends VpnService {
             Builder builder = new Builder();
             
             
-            builder.setSession("BlackBox VPN");
+            builder.setSession("FridaBox VPN");
             
             
             builder.addAddress("10.0.0.2", 32);
@@ -140,7 +140,7 @@ public class ProxyVpnService extends VpnService {
             builder.addAllowedApplication(getPackageName());
             
             
-            builder.setSession("BlackBox Internet Access");
+            builder.setSession("FridaBox Internet Access");
             
             Slog.d(TAG, "VPN builder configured, establishing interface...");
             
@@ -210,7 +210,7 @@ public class ProxyVpnService extends VpnService {
                     Slog.e(TAG, "Error in network monitoring: " + e.getMessage());
                 }
             }
-        }, "BlackBoxNetworkHandler");
+        }, "FridaBoxNetworkHandler");
         
         mNetworkThread.start();
         Slog.d(TAG, "Network handling thread started");

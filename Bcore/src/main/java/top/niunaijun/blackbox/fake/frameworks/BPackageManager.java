@@ -506,8 +506,8 @@ public class BPackageManager extends BlackManager<IBPackageManagerService> {
                         String packageName = packageInfo.packageName;
                         String hostPackageName = BlackBoxCore.getHostPkg();
                         if (packageName.equals(hostPackageName)) {
-                            Log.w(TAG, "Attempt to install BlackBox app detected and blocked: " + packageName);
-                            return new InstallResult().installError("Cannot clone BlackBox app from within BlackBox. This would create infinite recursion and is not allowed for security reasons.");
+                            Log.w(TAG, "Attempt to install the FridaBox host app was blocked: " + packageName);
+                            return new InstallResult().installError("Cannot clone FridaBox from inside its own workspace. This would create infinite recursion and is not allowed for security reasons.");
                         }
                     }
                 } catch (Exception e) {

@@ -13,13 +13,12 @@
 
 
     <application
-        android:name=".app.App"
+        android:name=".FridaBoxApplication"
         android:allowBackup="false"
         android:extractNativeLibs="true"
         android:fullBackupContent="false"
         android:icon="@drawable/ic_fridabox_app"
-        android:label="@string/app_name"
-        android:networkSecurityConfig="@xml/network_security_config"
+        android:label="@string/fb_brand"
         android:roundIcon="@drawable/ic_fridabox_app"
         android:supportsRtl="true"
         android:theme="@style/Theme.FridaBox"
@@ -27,35 +26,12 @@
         tools:replace="android:allowBackup"
         tools:targetApi="n">
         <activity
-            android:name=".fridabox.FridaBoxActivity"
+            android:name=".FridaBoxActivity"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".view.fake.FollowMyLocationOverlay"
-            android:exported="false" />
-        <activity android:name=".view.setting.SettingActivity" />
-        <activity android:name=".view.gms.GmsManagerActivity" />
-        <activity
-            android:name=".view.main.WelcomeActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.FridaBox" />
-        <activity android:name=".view.list.ListActivity" />
-        <activity android:name=".view.fake.FakeManagerActivity" />
-
-        <activity
-            android:name=".view.main.ShortcutActivity"
-            android:excludeFromRecents="true"
-            android:exported="true" />
-        <activity android:name=".view.main.MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
     </application>

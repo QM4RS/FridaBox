@@ -45,7 +45,7 @@ public class IWifiManagerProxy extends BinderInvocationStub {
             WifiInfo wifiInfo = (WifiInfo) method.invoke(who, args);
             BRWifiInfo.get(wifiInfo)._set_mBSSID("ac:62:5a:82:65:c4");
             BRWifiInfo.get(wifiInfo)._set_mMacAddress("ac:62:5a:82:65:c4");
-            BRWifiInfo.get(wifiInfo)._set_mWifiSsid(BRWifiSsid.get().createFromAsciiEncoded("BlackBox_Wifi"));
+            BRWifiInfo.get(wifiInfo)._set_mWifiSsid(BRWifiSsid.get().createFromAsciiEncoded("FridaBox_Wifi"));
             return wifiInfo;
         }
 

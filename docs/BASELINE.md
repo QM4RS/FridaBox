@@ -1,6 +1,6 @@
-# NewBlackbox baseline
+# FridaBox build baseline
 
-- Foundation: `ALEX5402/NewBlackbox`, branch `main`
+- Virtual runtime foundation revision: `89b59836c66f173756a4ae258cf379a957649820`
 - Required commit: `89b59836c66f173756a4ae258cf379a957649820`
 - Working branch: `feature/fridabox-mvp`
 - Baseline date: 2026-07-19
