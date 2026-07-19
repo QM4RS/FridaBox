@@ -17,8 +17,13 @@
 *.logcat
 .vscode
 /build
+**/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
 /app/release/
+__pycache__/
+*.pyc
+node_modules/
+.npm-cache/

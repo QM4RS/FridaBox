@@ -26,3 +26,5 @@
 -keep class android.** {*; }
 -keep class com.android.** {*; }
 
+-keep class top.niunaijun.blackbox.instrumentation.GuestRuntimeRegistry { public static *; }
+-keep class top.niunaijun.blackbox.instrumentation.FridaGadgetLoader { public static *; }

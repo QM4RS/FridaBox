@@ -7,9 +7,9 @@ android {
 
     namespace 'top.niunaijun.blackboxa'
     compileSdk rootProject.ext.compileSdkVersion
-    ndkVersion = "29.0.13846066"
+    ndkVersion = "29.0.14206865"
     defaultConfig {
-        applicationId "top.niunaijun.blackbox"
+        applicationId "com.qm4rs.fridabox"
         minSdk rootProject.ext.minSdk
         targetSdk rootProject.ext.targetSdkVersion
         versionCode rootProject.ext.versionCode
@@ -22,8 +22,8 @@ android {
                 enable true
                 reset()
                 
-                include 'armeabi-v7a', "arm64-v8a"
-                universalApk true
+                include "arm64-v8a"
+                universalApk false
             }
         }
     }
@@ -41,6 +41,10 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
+    }
+    sourceSets {
+        debug.assets.srcDir("$buildDir/generated/demoGuestAssets")
     }
     kotlinOptions {
         jvmTarget = '21'
@@ -48,6 +52,8 @@ android {
     packaging {
         jniLibs {
             excludes.add("**/libandroidx.graphics.path.so")
+            useLegacyPackaging true
+            keepDebugSymbols.add("**/libfrida-gadget.config.so")
         }
         resources {
             excludes.add("**/libandroidx.graphics.path.so")
@@ -55,9 +61,88 @@ android {
     }
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            output.outputFileName = "BlackBox_${variant.versionName}_${output.baseName}.apk"
+            output.outputFileName = "FridaBox_${variant.versionName}_${output.baseName}.apk"
         }
     }
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+tasks.register("copyDemoGuestDebug", Copy) {
+    dependsOn(":sample-guest:assembleDebug")
+    from(project(":sample-guest").layout.buildDirectory.file("outputs/apk/debug/sample-guest-debug.apk"))
+    into(layout.buildDirectory.dir("generated/demoGuestAssets/demo"))
+    rename { "sample-guest.apk" }
+}
+tasks.matching { it.name == "mergeDebugAssets" }.configureEach { dependsOn("copyDemoGuestDebug") }
+tasks.matching { it.name.toLowerCase().contains("debug") && it.name.toLowerCase().contains("lint") }
+        .configureEach { dependsOn("copyDemoGuestDebug") }
+
+def fridaGadget = file("src/main/jniLibs/arm64-v8a/libfrida-gadget.so")
+def fridaGadgetConfig = file("src/main/jniLibs/arm64-v8a/libfrida-gadget.config.so")
+tasks.register("verifyFridaGadget") {
+    inputs.files(fridaGadget, fridaGadgetConfig)
+    doLast {
+        if (!fridaGadget.isFile()) {
+            throw new GradleException("Frida Gadget 17.16.0 is missing. Run: python tools/fetch_frida_gadget.py")
+        }
+        if (!fridaGadgetConfig.isFile()) {
+            throw new GradleException("Frida Gadget configuration is missing: ${fridaGadgetConfig}")
+        }
+        def digest = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(fridaGadget.bytes).collect { String.format("%02x", it & 0xff) }.join()
+        if (digest != "6bf149e5d1c5ec701e7b822cab57bb243f1c2a03318fa974fe373ee711a9ed9e") {
+            throw new GradleException("Frida Gadget 17.16.0 SHA-256 mismatch: ${digest}")
+        }
+        def config = new groovy.json.JsonSlurper().parse(fridaGadgetConfig)
+        if (config.interaction?.address != "127.0.0.1" || config.interaction?.on_load != "wait") {
+            throw new GradleException("Unsafe or invalid Frida Gadget configuration")
+        }
+    }
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("verifyFridaGadget") }
+
+tasks.register("verifyDebugApkFridaPackaging") {
+    dependsOn("assembleDebug")
+    doLast {
+        def apk = fileTree("$buildDir/outputs/apk/debug").matching { include("*.apk") }.singleFile
+        def entries = zipTree(apk).matching {
+            include("lib/arm64-v8a/libfrida-gadget.so")
+            include("lib/arm64-v8a/libfrida-gadget.config.so")
+        }.files.collect { it.name }.toSet()
+        if (!entries.contains("libfrida-gadget.so") || !entries.contains("libfrida-gadget.config.so")) {
+            throw new GradleException("Debug APK does not contain both Frida Gadget files")
+        }
+    }
+}
+
+tasks.register("verifyInstrumentationOrdering") {
+    doLast {
+        def source = project(":Bcore").file("src/main/java/top/niunaijun/blackbox/app/BActivityThread.java").text
+        def loader = source.indexOf("FridaGadgetLoader.loadIfEnabled()")
+        def makeApplication = source.indexOf("makeApplication(", loader)
+        if (loader < 0 || makeApplication < 0 || loader >= makeApplication) {
+            throw new GradleException("Frida Gadget loader must execute before guest makeApplication")
+        }
+    }
+}
+
+tasks.register("verifyDemoGuestUnmodified") {
+    dependsOn("copyDemoGuestDebug")
+    doLast {
+        def source = project(":sample-guest").layout.buildDirectory.file("outputs/apk/debug/sample-guest-debug.apk").get().asFile
+        def embedded = layout.buildDirectory.file("generated/demoGuestAssets/demo/sample-guest.apk").get().asFile
+        if (!java.util.Arrays.equals(java.security.MessageDigest.getInstance("SHA-256").digest(source.bytes),
+                java.security.MessageDigest.getInstance("SHA-256").digest(embedded.bytes))) {
+            throw new GradleException("Embedded sample APK differs from generated sample APK")
+        }
+    }
+}
+
+tasks.named("check").configure {
+    dependsOn("verifyDebugApkFridaPackaging", "verifyInstrumentationOrdering", "verifyDemoGuestUnmodified")
 }
 
 dependencies {

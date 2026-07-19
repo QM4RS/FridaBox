@@ -42,3 +42,5 @@
     @top.niunaijun.blackreflection.annotation.BConstructor.* <methods>;
     @top.niunaijun.blackreflection.annotation.BConstructorNotProcess.* <methods>;
 }
+-keep class top.niunaijun.blackbox.instrumentation.GuestRuntimeRegistry { public static *; }
+-keep class top.niunaijun.blackbox.instrumentation.FridaGadgetLoader { public static *; }

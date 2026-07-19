@@ -1,89 +1,35 @@
-# BlackBox - Virtual Engine
+# FridaBox
 
-<p align="center">
-  <img src="assets/usage.gif" alt="BlackBox Banner" width="100%"/>
-</p>
+FridaBox is an authorized mobile-security research MVP that runs an original,
+unmodified APK inside BlackBox virtual processes and loads Frida Gadget before
+the guest `Application` is created. It requires no root, frida-server, Magisk,
+Zygisk, system-image changes, real PackageManager installation, APK patching,
+repacking, or resigning.
 
-BlackBox is a virtual engine that allows you to clone and run virtual applications on Android devices without installing APKs. This project works on Android 5.0 to 14.0+ and supports multiple architectures (ARM64, ARMv7, x86).
+The foundation is `ALEX5402/NewBlackbox` commit
+`89b59836c66f173756a4ae258cf379a957649820`. The host application ID is
+`com.qm4rs.fridabox`; existing engine namespaces remain unchanged.
 
-## Overview
+## MVP capabilities
 
-This enhanced edition includes bug fixes, stability improvements, and Android 14+ compatibility tailored for modern devices.
+- SAF import of one base APK into app-private, read-only storage.
+- SHA-256 verification before and after BlackBox virtual installation.
+- ARM64 native-library inspection; pure Java/Kotlin guests are accepted and
+  native guests without `arm64-v8a` are rejected.
+- Per-guest instrumented or non-instrumented launches with virtual process stop
+  before mode changes.
+- Frida Gadget 17.16.0 bound to loopback, default port 27042, with conflict
+  fallback and `on_load=wait` for pre-`Application.onCreate()` hooks.
+- Process-local guest registry and controller-side ClassLoader selection.
+- Debug sample guest proving `Target.add(2, 3)` can be replaced with `1337`.
+- Reproducibly bundled Frida 17 Java agents using pinned `frida-java-bridge`
+  7.0.13 and `frida-compile` 19.0.5.
 
-### Key Features
+Start with [docs/BUILDING.md](docs/BUILDING.md), [docs/USAGE.md](docs/USAGE.md),
+and [docs/FRIDA_CONNECTION.md](docs/FRIDA_CONNECTION.md).
 
-*   **Virtual App Cloning**: Run multiple instances of applications.
-*   **Sandboxed Environment**: Isolated process execution.
-*   **No Root Required**: Runs entirely in userspace.
-*   **Multi-Architecture**: Support for 32-bit and 64-bit apps.
-*   **Device Spoofing**: Modify device information for virtual apps.
-*   **Fake Location**: Spoof GPS coordinates.
+FridaBox is not undetectable. See [docs/DETECTION_SURFACES.md](docs/DETECTION_SURFACES.md)
+and [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
-## Requirements
-
-*   **Android Version**: Android 5.0 (API 21) or higher.
-*   **RAM**: 2GB minimum recommended.
-*   **Architecture**: ARMv7a, ARM64-v8a, x86.
-
-## Build Instructions
-
-### Prerequisites
-*   Android Studio (Arctic Fox or newer)
-*   JDK 17
-*   Android SDK 34+
-*   NDK (Version 29.0.13846066)
-
-### Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/your-repo/NewBlackbox.git
-cd NewBlackbox
-
-# Build Debug APK
-./gradlew assembleDebug
-
-# Build Release APK
-./gradlew assembleRelease
-```
-
-## Integration
-
-To use BlackBox Core in your own project, add the AAR dependency:
-
-```gradle
-dependencies {
-    implementation fileTree(dir: "libs", include: ["*.aar"])
-}
-```
-
-Refer to `Docs.md` for detailed API documentation.
-
-## Troubleshooting
-
-*   **App Crashes**: Check logcat for UID mismatches or permission errors.
-*   **Installation Failures**: Verify potential architecture mismatches or storage permissions.
-*   **Android 15**: Ensure you are using the latest build which handles stricter security policies.
-
-## Credits
-
-*   **Main Developer**: ALEX502
-*   **Original Framework**: VirtualApp, VirtualAPK
-*   **Native Hooks**: Dobby, xDL
-*   **Reflection**: BlackReflection, FreeReflection
-
-## License
-
-Copyright 2022 BlackBox
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+The complete Android 16 device transcript is in
+[docs/device-validation.log](docs/device-validation.log).

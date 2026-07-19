@@ -17,7 +17,7 @@ class BlackBoxLoader {
 
     private var mHideRoot by AppSharedPreferenceDelegate(App.getContext(), false)
 
-    private var mDaemonEnable by AppSharedPreferenceDelegate(App.getContext(), false)
+    private var mDaemonEnable by AppSharedPreferenceDelegate(App.getContext(), true)
     private var mShowShortcutPermissionDialog by AppSharedPreferenceDelegate(App.getContext(), true)
 
     
@@ -245,12 +245,7 @@ class BlackBoxLoader {
                                 }
 
                                 override fun isEnableDaemonService(): Boolean {
-                                    return try {
-                                        mDaemonEnable
-                                    } catch (e: Exception) {
-                                        Log.e(TAG, "Error checking daemonEnable: ${e.message}")
-                                        false
-                                    }
+                                    return true
                                 }
 
                                 override fun isUseVpnNetwork(): Boolean {

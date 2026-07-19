@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackboxa.util.InjectionUtil
 import top.niunaijun.blackboxa.view.list.ListViewModel
+import top.niunaijun.blackboxa.fridabox.FridaBoxActivity
 
 class WelcomeActivity : AppCompatActivity() {
 
@@ -22,7 +23,7 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     private fun jump() {
-        MainActivity.start(this)
+        startActivity(Intent(this, FridaBoxActivity::class.java))
         finish()
     }
 

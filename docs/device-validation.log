@@ -1,0 +1,163 @@
+FridaBox device validation transcript
+Date: 2026-07-19 (Asia/Tehran)
+Device: Samsung SM-S928B, serial R5CY149SZEX
+
+1. Device and host installation
+
+> adb devices -l
+R5CY149SZEX  device product:e3qxxx model:SM_S928B device:e3q transport_id:3
+
+> adb shell getprop ro.product.cpu.abilist
+arm64-v8a
+
+> adb shell getprop ro.build.version.release
+16
+
+> adb shell getprop ro.build.version.sdk
+36
+
+> $env:FRIDABOX_NDK_PROJECT_DIR='D:\FridaBoxBuild\Bcore'; .\gradlew.bat :app:assembleDebug --console=plain
+BUILD SUCCESSFUL
+
+> adb install -r app\build\outputs\apk\debug\FridaBox_4.0.0_arm64-v8a-debug.apk
+Performing Streamed Install
+Success
+
+> adb shell am start --user 0 -n com.qm4rs.fridabox/top.niunaijun.blackboxa.view.main.WelcomeActivity
+Starting: Intent { cmp=com.qm4rs.fridabox/top.niunaijun.blackboxa.view.main.WelcomeActivity }
+
+The debug UI action "Install demo guest" installed the generated asset into
+BlackBox. The UI reported:
+
+  package: com.qm4rs.fridabox.sample
+  version: 1.0
+  SHA-256: 35fa3a6d679ae0b0a18635756e1d1a23b5340d12e480eb8600768ab60af0e95e
+  source: /data/user/0/com.qm4rs.fridabox/files/imported-apks/sample-guest.apk
+  ABI: Pure Java/Kotlin (accepted)
+  target SDK: 28
+
+> adb shell pm list packages --user 0 com.qm4rs.fridabox
+package:com.qm4rs.fridabox
+
+> adb shell pm list packages --user 0 com.qm4rs.fridabox.sample
+<no output>
+
+Result: the sample guest is absent from Android user 0's real PackageManager.
+Samsung has an inaccessible user 150, so all PackageManager proof commands
+explicitly use --user 0.
+
+2. Pre-attach pause
+
+The UI selected "Launch instrumented" and confirmed the early-instrumentation
+warning. Before running the controller:
+
+> adb shell ps -A | Select-String fridabox.sample
+u0_a524  31797  1675  ...  S com.qm4rs.fridabox.sample
+
+> adb shell ss -ltn | Select-String 27042
+LISTEN  0  0  127.0.0.1:27042  0.0.0.0:*
+
+> adb logcat -d -v threadtime -s FridaBox.Gadget:I FridaBox.Sample:I *:S
+07-19 23:11:00.878 31797 31797 I FridaBox.Gadget: Loading Frida Gadget for com.qm4rs.fridabox.sample
+
+There was no FridaBox.Sample attachBaseContext or onCreate line. The guest main
+thread was paused inside System.loadLibrary before makeApplication.
+
+3. Controller discovery, registry, ClassLoader and native modules
+
+> python -m pip install -r tools\requirements.txt
+Successfully installed frida-17.16.0
+
+> npm ci
+Pinned packages installed from package-lock.json.
+
+> python tools\build_frida_agents.py
+Built Frida agents: scripts/dist/registry-probe.js,
+scripts/dist/guest-bootstrap.js, scripts/dist/sample-hook.js
+
+> python -u tools\attach_guest.py --package com.qm4rs.fridabox.sample --script scripts\sample-hook.js --keep-alive
+
+PORT   GUEST PACKAGE              GUEST PROCESS              VPID  SOURCE APK
+27042  com.qm4rs.fridabox.sample  com.qm4rs.fridabox.sample  0     /data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/base.apk
+
+[FridaBox] package=com.qm4rs.fridabox.sample
+[FridaBox] process=com.qm4rs.fridabox.sample
+[FridaBox] userId=0
+[FridaBox] virtualProcessId=0
+[FridaBox] source=/data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/base.apk
+[FridaBox] ClassLoader=dalvik.system.PathClassLoader[DexPathList[[zip file "/data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/base.apk"],nativeLibraryDirectories=[/data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/lib, /data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]]
+GuestRuntimeRegistry: {"initializedAt": 1784490060872, "instrumentationEnabled": true, "lastError": null, "package": "com.qm4rs.fridabox.sample", "process": "com.qm4rs.fridabox.sample", "sourceDir": "/data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.qm4rs.fridabox.sample/base.apk", "userId": 0, "virtualProcessId": 0}
+Native modules: 419
+  app_process64 @ 0x5e4d8a8000 /system/bin/app_process64
+  linker64 @ 0x7d37dc1000 /apex/com.android.runtime/bin/linker64
+  libandroid_runtime.so @ 0x7cf688b000 /system/lib64/libandroid_runtime.so
+  libbinder.so @ 0x7d0ae9a000 /system/lib64/libbinder.so
+  libnativeloader.so @ 0x7d2fbc1000 /apex/com.android.art/lib64/libnativeloader.so
+[sample-hook] installed for com.qm4rs.fridabox.sample
+Attached on port 27042 to com.qm4rs.fridabox.sample / com.qm4rs.fridabox.sample
+
+Post-attach lifecycle evidence:
+
+07-19 23:11:44.774 31797 31797 I FridaBox.Gadget: Frida Gadget loaded
+07-19 23:11:44.782 31797 31797 I FridaBox.Sample: Application.attachBaseContext package=com.qm4rs.fridabox.sample
+07-19 23:11:44.787 31797 31797 I FridaBox.Sample: Application.onCreate package=com.qm4rs.fridabox.sample
+
+This ordering proves the Application lifecycle resumed only after controller
+attachment.
+
+4. Java hook proof
+
+The validation tapped the visible "CALL TARGET.ADD(2, 3)" button while the
+controller session remained attached.
+
+Controller output:
+[sample-hook] Target.add(2, 3) => 1337
+
+UI hierarchy output:
+<node text="Result: 1337" class="android.widget.TextView" ... />
+
+5. Recycled launch without instrumentation
+
+The previous instrumented process was PID 31797. The controller detached, the
+UI returned Home, and "Launch without instrumentation" stopped/recycled the
+virtual process before launch.
+
+> adb shell ps -A | Select-String fridabox.sample
+u0_a524  32298  1675  ...  S com.qm4rs.fridabox.sample
+
+> adb shell ss -ltn | Select-String 27042
+<no listener>
+
+07-19 23:12:47.821 32298 32298 I FridaBox.Gadget: Instrumentation disabled for this guest process
+07-19 23:12:47.826 32298 32298 I FridaBox.Sample: Application.attachBaseContext package=com.qm4rs.fridabox.sample
+07-19 23:12:47.828 32298 32298 I FridaBox.Sample: Application.onCreate package=com.qm4rs.fridabox.sample
+
+The same button then produced:
+<node text="Result: 5" class="android.widget.TextView" ... />
+
+6. Device-specific failures found and fixed
+
+Samsung Android 16 initially froze the BlackBox :black system-service process:
+
+  libbinder.IPCThreadState: Transaction failed because process frozen.
+  Binder transaction failure: BR_FROZEN_REPLY
+  android.os.DeadObjectException at
+  IBPackageManagerService$Stub$Proxy.installPackageAsUser(...)
+
+Fix: enable the existing internal DaemonService for FridaBox. Verification:
+
+  DaemonService: Foreground service started successfully
+  DaemonService: DaemonService started successfully
+
+No subsequent BR_FROZEN_REPLY occurred and the virtual package remained
+available across host/activity restarts.
+
+The first Frida 17 API-loaded probe failed with:
+
+  Port 27042 rejected: ReferenceError: 'Java' is not defined
+
+Fix: explicitly import frida-java-bridge 7.0.13 and reproducibly compile all
+Java agents with frida-compile 19.0.5. The early registry probe also uses
+Java.performNow(), avoiding a deadlock with Gadget's on_load=wait main thread.
+
+Final result: all required sample runtime checks passed on ARM64 Android 16.

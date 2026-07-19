@@ -85,6 +85,10 @@ import top.niunaijun.blackbox.utils.compat.BuildCompat;
 import top.niunaijun.blackbox.utils.compat.ContextCompat;
 import top.niunaijun.blackbox.utils.compat.StrictModeCompat;
 import top.niunaijun.blackbox.core.system.JarManager;
+import top.niunaijun.blackbox.instrumentation.FridaGadgetLoader;
+import top.niunaijun.blackbox.instrumentation.GuestRuntimeRegistry;
+import top.niunaijun.blackbox.instrumentation.InstrumentationSettings;
+import top.niunaijun.blackbox.instrumentation.InstrumentationStatusStore;
 
 
 public class BActivityThread extends IBActivityThread.Stub {
@@ -402,6 +406,21 @@ public class BActivityThread extends IBActivityThread.Stub {
         NativeCore.init(Build.VERSION.SDK_INT);
         assert packageContext != null;
         IOCore.get().enableRedirect(packageContext);
+
+        ClassLoader guestClassLoader = BRLoadedApk.get(loadedApk).getClassLoader();
+        boolean instrumentationEnabled = InstrumentationSettings.isEnabledForPackage(packageName);
+        GuestRuntimeRegistry.initialize(packageName, processName, getUserId(), getAppPid(),
+                applicationInfo, guestClassLoader, instrumentationEnabled);
+        InstrumentationStatusStore.recordBinding();
+        if (guestClassLoader != null) {
+            try {
+                Thread.currentThread().setContextClassLoader(guestClassLoader);
+            } catch (SecurityException error) {
+                GuestRuntimeRegistry.setLastError(error);
+                Slog.w(TAG, "Unable to set guest context ClassLoader: " + error.getMessage());
+            }
+        }
+        FridaGadgetLoader.loadIfEnabled();
 
         AppBindData bindData = new AppBindData();
         bindData.appInfo = applicationInfo;
