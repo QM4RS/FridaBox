@@ -13,6 +13,7 @@ android {
 
 
     aidlPackagedList "android/app/IServiceConnection.aidl"
+    aidlPackagedList "android/app/IBinderSession.aidl"
     aidlPackagedList "android/accounts/IAccountManagerResponse.aidl"
     buildFeatures {
         aidl true

@@ -33,6 +33,18 @@ bounded ten seconds when the ClassLoader is temporarily unavailable.
 The controller prints the registry JSON, selected ClassLoader, and native-module
 enumeration before loading the user script.
 
+## On-device mode
+
+Computer-side forwarding and controller tools are not used in On-device mode.
+FridaBox creates a private Gadget copy with an adjacent Script-interaction
+configuration and a relative `agent.js` path. Gadget loads that script before
+returning to guest Application creation. The selected script is stored per
+package and reused automatically until it is replaced or the guest is removed.
+
+Use Computer mode when the script needs an interactive host, RPC calls, or
+observable `send()` messages. Use On-device mode for autonomous hooks and
+in-process behavior.
+
 Use `tools/forward_frida_ports.py` when only port forwarding is needed. A client
 major-version mismatch prints the exact `pip install frida==17.16.0` repair
 command.

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="fb_content_margin">32dp</dimen>
+    <dimen name="fb_content_top">28dp</dimen>
+    <dimen name="fb_content_bottom">120dp</dimen>
+    <dimen name="fb_card_radius">24dp</dimen>
+    <dimen name="fb_max_content_width">920dp</dimen>
+</resources>

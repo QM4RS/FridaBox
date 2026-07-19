@@ -3,6 +3,16 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
 }
 
+def releaseStoreFile = System.getenv("FRIDABOX_RELEASE_STORE_FILE")
+def releaseStorePassword = System.getenv("FRIDABOX_RELEASE_STORE_PASSWORD")
+def releaseKeyAlias = System.getenv("FRIDABOX_RELEASE_KEY_ALIAS")
+def releaseKeyPassword = System.getenv("FRIDABOX_RELEASE_KEY_PASSWORD")
+def releaseSigningValues = [releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword]
+def releaseSigningConfigured = releaseSigningValues.every { it != null && !it.trim().isEmpty() }
+if (releaseSigningValues.any { it != null && !it.trim().isEmpty() } && !releaseSigningConfigured) {
+    throw new GradleException("Release signing is incomplete. Set all four FRIDABOX_RELEASE_* environment variables.")
+}
+
 android {
 
     namespace 'top.niunaijun.blackboxa'
@@ -28,10 +38,24 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

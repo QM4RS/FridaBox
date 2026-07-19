@@ -2,6 +2,7 @@ package top.niunaijun.blackbox.instrumentation;
 
 import android.util.Log;
 
+import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Loads Frida Gadget at most once in the current Linux process. */
@@ -25,8 +26,17 @@ public final class FridaGadgetLoader {
             if (!ATTEMPTED.compareAndSet(false, true)) return false;
             try {
                 InstrumentationStatusStore.recordBinding();
-                Log.i(TAG, "Loading Frida Gadget for " + GuestRuntimeRegistry.getGuestProcessName());
-                System.loadLibrary("frida-gadget");
+                String packageName = GuestRuntimeRegistry.getGuestPackageName();
+                String mode = InstrumentationSettings.getModeForPackage(packageName);
+                if (InstrumentationSettings.MODE_LOCAL_SCRIPT.equals(mode)) {
+                    String scriptPath = InstrumentationSettings.getScriptPathForPackage(packageName);
+                    File runtime = LocalScriptGadgetRuntime.prepare(packageName, scriptPath);
+                    Log.i(TAG, "Loading on-device Frida agent for " + GuestRuntimeRegistry.getGuestProcessName());
+                    System.load(runtime.getAbsolutePath());
+                } else {
+                    Log.i(TAG, "Loading Frida Gadget listener for " + GuestRuntimeRegistry.getGuestProcessName());
+                    System.loadLibrary("frida-gadget");
+                }
                 loaded = true;
                 InstrumentationStatusStore.recordLoaded();
                 Log.i(TAG, "Frida Gadget loaded");

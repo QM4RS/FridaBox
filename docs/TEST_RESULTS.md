@@ -68,3 +68,54 @@ Runtime validation passed on a Samsung SM-S928B running ARM64 Android 16/API 36:
 
 The command and log transcript, including two device-discovered fixes, is in
 `docs/device-validation.log`.
+
+## Commercial workspace and per-app mode validation
+
+Validation date: 2026-07-20
+
+The redesigned FridaBox launcher and all three per-app modes were validated on
+the same Samsung SM-S928B, ARM64 Android 16/API 36 device with the imported
+`com.paeezanstudio.pesarkhande` 3.3.7 guest.
+
+- The independent FridaBox launcher, icon, dark product theme, responsive
+  workspace cards, bottom navigation, import action, and selected-mode states
+  rendered correctly at 1080 x 2340.
+- `pesarkhande-agent.js` (198,960 bytes, SHA-256
+  `41dd04f7a6a4b8de47fcd94ee5646f43effd8f73b36eda64d46a65f4f304fa49`)
+  was selected through Android's document picker and copied without modification.
+- On-device mode loaded the private Gadget and Script configuration without a
+  controller, then returned to `beforeCreateApplication`; the Unity game reached
+  its interactive home screen.
+- Runtime reported `local_script_active`, package
+  `com.paeezanstudio.pesarkhande`, virtual user ID 0, virtual process slot 1,
+  the private source APK, and `dalvik.system.PathClassLoader`.
+- Computer mode paused before `beforeCreateApplication`. Direct
+  `frida -U gadget` attachment resumed the guest and enumerated 416 native
+  modules; the first five were `app_process64`, `linker64`,
+  `libandroid_runtime.so`, `libbinder.so`, and `libcutils.so`.
+- Clean mode recycled the main guest PID from 26464 to 27819, emitted
+  `Instrumentation disabled for this guest process`, opened no Gadget listener,
+  and launched the game normally.
+- A stale cross-process SharedPreferences cache initially made Runtime display
+  `Waiting for computer` for a successful on-device launch. Multi-process reload
+  semantics fixed the display; the persisted state was already correct.
+- The private JavaScript file is mode 0400 and the private Gadget executable is
+  mode 0555 at launch. Android 16 no longer reports the writable-executable
+  warning for the FridaBox Gadget copy.
+
+Final automated builds and tests passed:
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:assembleRelease :Bcore:testDebugUnitTest :app:testDebugUnitTest
+```
+
+Artifacts:
+
+- debug: 21,049,981 bytes, SHA-256
+  `80e70b33fca741e4f805aa233cdfaf5bc6fe2030e93c8fd825611eb5c407c917`;
+- release: 13,266,764 bytes, SHA-256
+  `caa2218194fcbe91c10d0d29a74b7401aaed53f340b8a0d6668321ddae48ddfb`.
+
+The release artifact was intentionally unsigned because no production keystore
+was supplied. `apksigner` confirmed the debug APK verifies and the release APK
+does not contain a debug signature.

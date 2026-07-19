@@ -18,9 +18,10 @@
 package android.app;
 
 import android.content.ComponentName;
+import android.app.IBinderSession;
 
 /** @hide */
 interface IServiceConnection {
-    void connected(in ComponentName name, IBinder service);
+    void connected(in ComponentName name, IBinder service, IBinderSession session, boolean dead);
 }
 

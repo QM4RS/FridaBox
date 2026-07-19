@@ -161,3 +161,107 @@ Java agents with frida-compile 19.0.5. The early registry probe also uses
 Java.performNow(), avoiding a deadlock with Gadget's on_load=wait main thread.
 
 Final result: all required sample runtime checks passed on ARM64 Android 16.
+
+-------------------------------------------------------------------------------
+2026-07-20 - Commercial UI and per-app execution modes
+-------------------------------------------------------------------------------
+
+Device reconfirmation:
+
+> adb shell getprop ro.product.cpu.abi
+arm64-v8a
+
+> adb shell getprop ro.build.version.release
+16
+
+> adb shell getprop ro.build.version.sdk
+36
+
+> adb install -r -t app\build\outputs\apk\debug\FridaBox_4.0.0_arm64-v8a-debug.apk
+Performing Streamed Install
+Success
+
+The branded launcher was inspected by screenshot and UIAutomator at 1080 x
+2340. FridaBox opened directly into Workspace; the selected mode had a distinct
+state, the header was not clipped, and Import APK did not overlap guest actions.
+
+On-device agent import:
+
+> adb push D:\Reverse\Game-Hacking\pesarkhande\release\pesarkhande-agent.js /sdcard/Download/pesarkhande-agent.js
+1 file pushed, 198960 bytes
+
+> Get-FileHash -Algorithm SHA256 D:\Reverse\Game-Hacking\pesarkhande\release\pesarkhande-agent.js
+41dd04f7a6a4b8de47fcd94ee5646f43effd8f73b36eda64d46a65f4f304fa49
+
+The UI selected On-device -> Select JavaScript -> pesarkhande-agent.js and
+displayed the same SHA-256 prefix. The private configuration was:
+
+{
+  "interaction": {
+    "type": "script",
+    "path": "agent.js",
+    "on_change": "reload",
+    "parameters": { "package": "com.paeezanstudio.pesarkhande" }
+  },
+  "runtime": "qjs",
+  "teardown": "minimal"
+}
+
+Autonomous launch evidence (no Frida client was attached):
+
+07-20 02:46:59.510 760 760 I FridaBox.Gadget: Loading on-device Frida agent for com.paeezanstudio.pesarkhande
+07-20 02:46:59.562 760 760 D nativeloader: Load /data/user/0/com.qm4rs.fridabox/files/fridabox-agents/com.paeezanstudio.pesarkhande/libfridabox-agent.so ...: ok
+07-20 02:46:59.569 760 760 I FridaBox.Gadget: Frida Gadget loaded
+07-20 02:46:59.570 760 760 D BlackBoxLoader: beforeCreateApplication: pkg com.paeezanstudio.pesarkhande, processName com.paeezanstudio.pesarkhande,userID:0
+
+The top resumed activity was ProxyActivity$P0 and the Unity guest reached its
+interactive home screen. Private file permissions after launch:
+
+- agent.js: `-r--------`, 198960 bytes
+- libfridabox-agent.config.so: `-rw-------`, 210 bytes
+- libfridabox-agent.so: `-r-xr-xr-x`, 25212656 bytes
+
+Runtime snapshot:
+
+- runtime_state: local_script_active
+- runtime_package: com.paeezanstudio.pesarkhande
+- runtime_process: com.paeezanstudio.pesarkhande:Metrica
+- runtime_user_id: 0
+- runtime_vpid: 1
+- runtime_source: /data/user/0/com.qm4rs.fridabox/blackbox/data/app/com.paeezanstudio.pesarkhande/base.apk
+- runtime_class_loader: dalvik.system.PathClassLoader@6c0723b
+- runtime_error: none
+
+Computer mode regression:
+
+07-20 02:30:02.989 26464 26464 I FridaBox.Gadget: Loading Frida Gadget listener for com.paeezanstudio.pesarkhande
+07-20 02:30:03.026 26464 26487 I Frida: Listening on 127.0.0.1 TCP port 27042
+
+No `beforeCreateApplication` line existed before attachment.
+
+> frida -U gadget -q -e "send({type:'fridabox-probe',pid:Process.id,moduleCount:Process.enumerateModules().length,firstModules:Process.enumerateModules().slice(0,5).map(function(m){return m.name;})})"
+message: {'type': 'send', 'payload': {'type': 'fridabox-probe', 'pid': 26464, 'moduleCount': 416, 'firstModules': ['app_process64', 'linker64', 'libandroid_runtime.so', 'libbinder.so', 'libcutils.so']}} data: None
+
+07-20 02:31:04.593 26464 26464 I FridaBox.Gadget: Frida Gadget loaded
+07-20 02:31:04.594 26464 26464 D BlackBoxLoader: beforeCreateApplication: pkg com.paeezanstudio.pesarkhande, processName com.paeezanstudio.pesarkhande,userID:0
+
+Clean mode regression after virtual-process recycling:
+
+- previous main PID: 26464
+- clean main PID: 27819
+
+07-20 02:33:27.289 27819 27819 I FridaBox.Gadget: Instrumentation disabled for this guest process
+07-20 02:33:27.290 27819 27819 D BlackBoxLoader: beforeCreateApplication: pkg com.paeezanstudio.pesarkhande, processName com.paeezanstudio.pesarkhande,userID:0
+
+There was no Gadget listener or Gadget load in the clean process. The saved
+agent remained available, and the final device state was restored to On-device.
+
+Final build:
+
+> .\gradlew.bat :app:assembleDebug :app:assembleRelease :Bcore:testDebugUnitTest :app:testDebugUnitTest
+BUILD SUCCESSFUL
+
+- debug APK: 21049981 bytes, SHA-256 80e70b33fca741e4f805aa233cdfaf5bc6fe2030e93c8fd825611eb5c407c917
+- release APK: 13266764 bytes, SHA-256 caa2218194fcbe91c10d0d29a74b7401aaed53f340b8a0d6668321ddae48ddfb
+- debug signature verification: passed
+- release signature verification: intentionally unsigned; no debug key fallback

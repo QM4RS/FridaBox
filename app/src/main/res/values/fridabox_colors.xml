@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fb_background">#080C14</color>
+    <color name="fb_surface">#111827</color>
+    <color name="fb_surface_high">#182235</color>
+    <color name="fb_surface_tint">#1D2940</color>
+    <color name="fb_primary">#64E8E8</color>
+    <color name="fb_primary_dark">#1AAFB5</color>
+    <color name="fb_secondary">#9B87F5</color>
+    <color name="fb_text_primary">#F8FAFC</color>
+    <color name="fb_text_secondary">#9CAEC5</color>
+    <color name="fb_outline">#2B3A52</color>
+    <color name="fb_success">#42D39A</color>
+    <color name="fb_warning">#F5BF5B</color>
+    <color name="fb_error">#FB7185</color>
+    <color name="fb_black">#05070B</color>
+    <color name="fb_transparent">#00000000</color>
+</resources>
