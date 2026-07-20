@@ -73,3 +73,18 @@ commit proprietary APKs or third-party scripts without redistribution rights.
 
 By contributing, you agree that your contribution is licensed under the
 repository's Apache License 2.0.
+
+## Contribute engineering time instead of money
+
+FridaBox does not request financial donations. If you already subscribe to
+Codex or Claude, a valuable way to support the project is to dedicate one week
+of your own quota to one bounded issue from [ROADMAP.md](ROADMAP.md), then submit
+a reviewed and tested pull request.
+
+- Work only through your own account; never transfer or share credentials.
+- Do not paste private APKs, agents, logs, keys, or user data into an AI tool.
+- Treat generated code as untrusted until you understand, review, and test it.
+- Keep the PR small enough for a human reviewer to audit.
+- Include exact build commands and authorized-device evidence.
+- Disclose meaningful AI assistance in the PR so reviewers understand the
+  development process, not as a substitute for technical ownership.

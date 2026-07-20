@@ -3,6 +3,15 @@
 All notable FridaBox changes are documented here. The project follows semantic
 versioning for its public releases.
 
+## [Unreleased]
+
+### Documentation
+
+- Added the public research roadmap for Frida visibility, `/proc`/maps
+  consistency, and higher-fidelity virtual-environment behavior.
+- Added a contribution model that asks users to donate a bounded week of their
+  own Codex or Claude engineering time instead of money.
+
 ## [4.0.0] - 2026-07-20
 
 ### Added

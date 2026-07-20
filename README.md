@@ -254,6 +254,34 @@ ClassLoader topology may all be observable. Read
 [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and
 [docs/DETECTION_SURFACES.md](docs/DETECTION_SURFACES.md).
 
+## Research roadmap
+
+The next research phase focuses on making the virtual environment more
+internally consistent and reducing avoidable instrumentation fingerprints:
+
+- reduce unnecessary Frida-visible artifacts and default identifiers;
+- research safe mediation of `/proc`, including coherent views of process maps;
+- improve filesystem, package, process, Binder, identity, ClassLoader, and
+  service behavior so guests observe a more faithful sandbox;
+- expand the Android/vendor test matrix and add regression probes for every
+  detection surface addressed.
+
+This work is tracked in [ROADMAP.md](ROADMAP.md). FridaBox will continue to
+document what remains observable and will not describe best-effort hardening as
+undetectability.
+
+### Contribute a week of engineering, not money
+
+FridaBox is not asking for financial donations. If the project is useful to you
+and you already have access to Codex or Claude, consider dedicating one week of
+your own usage quota to a scoped roadmap item: investigate it, implement the
+narrowest fix, validate it on an authorized target, and open a pull request.
+
+Use your own account and review every generated change yourself. Never share
+accounts, API keys, session tokens, private APKs, or proprietary agents. A small,
+well-tested PR with reproducible device evidence is more valuable than a large
+unreviewed code dump.
+
 ## Project status
 
 FridaBox 4.0.0 is a device-validated research release. The full sample hook and

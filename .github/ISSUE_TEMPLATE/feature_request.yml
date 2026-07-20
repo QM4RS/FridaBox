@@ -17,6 +17,20 @@ body:
       description: What concrete limitation or workflow gap should be addressed?
     validations:
       required: true
+  - type: dropdown
+    attributes:
+      label: Research area
+      options:
+        - Frida visibility reduction
+        - /proc and process-map consistency
+        - Virtual-environment fidelity
+        - Android or vendor compatibility
+        - Import, integrity, or ABI handling
+        - Controller and developer tooling
+        - Product UI and accessibility
+        - Documentation or validation
+    validations:
+      required: true
   - type: textarea
     attributes:
       label: Proposed boundary
