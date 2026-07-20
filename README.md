@@ -264,6 +264,8 @@ internally consistent and reducing avoidable instrumentation fingerprints:
 - research safe mediation of `/proc`, including coherent views of process maps;
 - improve filesystem, package, process, Binder, identity, ClassLoader, and
   service behavior so guests observe a more faithful sandbox;
+- replace the workable Codex-assisted UI baseline with a human-led product
+  design pass, an original FridaBox icon system, and a stronger visual identity;
 - expand the Android/vendor test matrix and add regression probes for every
   detection surface addressed.
 

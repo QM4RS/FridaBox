@@ -98,6 +98,38 @@ comparison tests against normal installations.
 - Reusable probe packs for Java, native, Binder, storage, and lifecycle tests.
 - Automated comparison of Computer, On-device, and Clean process snapshots.
 
+## P2 — Product design and visual identity
+
+The current interface was assembled largely with Codex and is a workable
+engineering baseline: it supports the validated flow and is reasonably usable,
+but it has not received a dedicated human-led product-design pass and is not the
+ideal final experience.
+
+- Rework information architecture, navigation, hierarchy, copy, and all empty,
+  loading, success, error, and permission states.
+- Create an original FridaBox logo and icon family, including adaptive launcher,
+  monochrome, notification, action, and repository artwork.
+- Define a coherent visual system for color, typography, spacing, components,
+  illustrations, motion, and instrumentation status.
+- Make every workflow responsive across compact phones, tablets, foldables,
+  landscape layouts, and large font/display scaling.
+- Audit contrast, touch targets, TalkBack semantics, keyboard/focus behavior,
+  reduced motion, and other Android accessibility requirements.
+- Validate the design with real import, script selection, Computer, On-device,
+  Clean, failure-recovery, and first-run scenarios instead of static mockups.
+
+Acceptance criteria:
+
+- the result has a recognizable FridaBox identity independent of BlackBox and
+  NewBlackbox;
+- launcher and in-product iconography remain legible at every Android-supported
+  size and theme treatment;
+- critical flows remain clear without prior knowledge of Frida or virtualization;
+- screenshots and interaction checks cover representative compact and expanded
+  layouts;
+- the final direction is reviewed and refined by a human designer rather than
+  being accepted solely as generated output.
+
 ## How to contribute
 
 Choose one observable surface and open an issue before starting a large change.
