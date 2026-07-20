@@ -12,6 +12,11 @@ this repository when it is available. Do not open a public issue for a flaw that
 could expose imported APKs, JavaScript agents, device data, signing material, or
 an unintended network listener.
 
+If private vulnerability reporting is unavailable, request a private reporting
+channel through [LinkedIn](https://www.linkedin.com/in/mahdikarzari) or
+[Telegram](https://t.me/QM4RS). Do not include credentials, private APKs,
+proprietary agents, or an operational exploit in the initial message.
+
 Include:
 
 - affected commit/version and Android build;

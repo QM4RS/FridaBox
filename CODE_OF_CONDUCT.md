@@ -20,6 +20,7 @@ data, knowingly false claims, and requests for unauthorized exploitation are not
 welcome. Maintainers may edit, hide, reject, or remove contributions that violate
 these expectations and may restrict participation when necessary.
 
-Report conduct concerns privately through the repository owner's available
-GitHub contact or security-advisory channel. Good-faith reports will be handled
-with discretion.
+Report conduct concerns privately through the repository owner's
+[LinkedIn](https://www.linkedin.com/in/mahdikarzari),
+[Telegram](https://t.me/QM4RS), or GitHub security-advisory channel. Good-faith
+reports will be handled with discretion.

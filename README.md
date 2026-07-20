@@ -266,6 +266,15 @@ See [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md), and
 [GitHub publishing checklist](docs/GITHUB_PUBLISHING.md) for the first public
 push, branch protection, topics, and release setup.
 
+## Contact
+
+- LinkedIn: [Mahdi Karzari](https://www.linkedin.com/in/mahdikarzari)
+- Telegram: [@QM4RS](https://t.me/QM4RS)
+
+For security-sensitive reports, start with GitHub's private vulnerability
+reporting when available. If that channel is unavailable, use one of the contact
+methods above and avoid sending secrets or sensitive proof in the first message.
+
 ## Acknowledgements
 
 FridaBox stands on years of work by the Android instrumentation and
