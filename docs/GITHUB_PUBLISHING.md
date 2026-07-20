@@ -47,14 +47,14 @@ git status
 git log --oneline -5
 ```
 
-Then push the intended branch explicitly:
+Push the public default branch explicitly:
 
 ```text
-git push -u origin feature/fridabox-mvp
+git push -u origin main
 ```
 
-If this branch is intended to become the public default, create/review a pull
-request into `main` and let Android CI finish before merging.
+For subsequent work, create a focused feature branch, open a pull request into
+`main`, and let Android CI finish before merging.
 
 ## Release checklist
 

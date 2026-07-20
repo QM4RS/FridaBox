@@ -10,6 +10,7 @@
 [![Release](https://img.shields.io/badge/release-4.0.0-00BFA5)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/status-device--validated-success)](docs/device-validation.log)
+[![Android CI](https://github.com/QM4RS/FridaBox/actions/workflows/android.yml/badge.svg)](https://github.com/QM4RS/FridaBox/actions/workflows/android.yml)
 
 **Import an original APK. Choose a per-app mode. Run trusted Frida JavaScript
 directly on the phone, attach from a computer, or launch clean.**
