@@ -1,0 +1,34 @@
+name: Research or feature proposal
+description: Propose a scoped capability or research direction.
+title: "[Proposal]: "
+labels: [enhancement]
+body:
+  - type: checkboxes
+    attributes:
+      label: Scope
+      options:
+        - label: This proposal is for authorized research and defensive testing.
+          required: true
+        - label: I reviewed the architecture and current limitations.
+          required: true
+  - type: textarea
+    attributes:
+      label: Problem
+      description: What concrete limitation or workflow gap should be addressed?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed boundary
+      description: Which host, virtual runtime, Gadget, controller, or UI component changes?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance evidence
+      description: Describe the tests and device proof that would demonstrate success.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Alternatives and risks

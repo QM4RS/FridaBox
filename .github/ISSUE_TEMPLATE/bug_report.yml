@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible FridaBox failure on an authorized test target.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not upload proprietary APKs, private agents, credentials, or unsanitized device logs.
+        Security vulnerabilities belong in a private GitHub security advisory.
+  - type: checkboxes
+    attributes:
+      label: Authorization and scope
+      options:
+        - label: I am authorized to test the device and application involved.
+          required: true
+        - label: I checked the documented limitations and existing issues.
+          required: true
+  - type: input
+    attributes:
+      label: FridaBox version or commit
+      placeholder: 4.0.0 / commit SHA
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Device and Android build
+      placeholder: Model, Android/API version, vendor ROM
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Launch mode
+      options: [On-device, Computer, Clean, Import/build, Not mode-specific]
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest deterministic sequence.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Sanitized evidence
+      description: Relevant logcat, stack trace, controller output, ABI, and process state.
+      render: text

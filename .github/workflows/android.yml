@@ -1,0 +1,87 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, test, and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            'platforms;android-35' \
+            'build-tools;35.0.0' \
+            'ndk;29.0.14206865'
+
+      - name: Install controller and agent dependencies
+        run: |
+          python -m pip install --requirement tools/requirements.txt
+          npm ci
+
+      - name: Verify reproducible Frida agents
+        run: |
+          python tools/build_frida_agents.py
+          git diff --exit-code -- scripts/dist
+
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew \
+            :app:assembleDebug \
+            :app:assembleRelease \
+            :Bcore:testDebugUnitTest \
+            :app:testDebugUnitTest \
+            :app:check \
+            --stacktrace \
+            --console=plain
+
+      - name: Upload APKs and reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fridabox-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/reports/lint-results-*.html
+            app/build/test-results/**/*.xml
+            Bcore/build/test-results/**/*.xml

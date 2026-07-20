@@ -9,7 +9,7 @@ python tools/build_frida_agents.py
 ```
 
 The Gadget listens only on device loopback. The controller verifies ADB, selects
-an authorized device, forwards TCP 27042–27073, probes each endpoint, rejects
+an authorized device, forwards TCP 27042-27073, probes each endpoint, rejects
 non-Gadget/non-FridaBox endpoints, and maps endpoints through
 `GuestRuntimeRegistry`.
 

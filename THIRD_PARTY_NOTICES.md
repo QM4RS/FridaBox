@@ -6,6 +6,18 @@ FridaBox is based on `ALEX5402/NewBlackbox` commit
 `89b59836c66f173756a4ae258cf379a957649820`. The foundation repository includes
 an Apache License 2.0 notice; see the repository root `LICENSE` file.
 
+FridaBox gratefully acknowledges NewBlackbox and the wider BlackBox project
+lineage for the virtual package, process, Binder, filesystem, identity,
+signature, component, and lifecycle foundation. FridaBox's own work builds a
+separate instrumentation product on that foundation: early Gadget integration,
+guest runtime discovery, controller tooling, per-app launch modes, integrity and
+ABI validation, on-device agent execution, the FridaBox UI, and the associated
+test and research documentation.
+
+- NewBlackbox source: `https://github.com/ALEX5402/NewBlackbox`
+- Pinned foundation revision:
+  `https://github.com/ALEX5402/NewBlackbox/commit/89b59836c66f173756a4ae258cf379a957649820`
+
 ## Frida Gadget 17.16.0
 
 - Origin: `https://github.com/frida/frida/releases/tag/17.16.0`
@@ -25,6 +37,10 @@ authoritative text is available at
 
 Frida is copyright its respective contributors. FridaBox makes no claim of
 ownership over Frida Gadget.
+
+FridaBox gratefully acknowledges the Frida maintainers and contributors for the
+instrumentation engine, GumJS runtime, Java bridge, Gadget deployment model, and
+controller APIs that make this research possible.
 
 ## Frida Java bridge and agent compiler
 
