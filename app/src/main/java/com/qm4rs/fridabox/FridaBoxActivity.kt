@@ -434,7 +434,162 @@ class FridaBoxActivity : AppCompatActivity() {
                             val count = input.read(buffer)
                             if (count < 0) break
                             total += count
-                            if (total > MAX_AGENT_SIZE) error("JavaScript a…1946 tokens truncated…safePackage-${originalHash.take(12)}.apk")
+                            if (total > MAX_AGENT_SIZE) error("JavaScript agent exceeds the 16 MiB limit")
+                            digest.update(buffer, 0, count)
+                            output.write(buffer, 0, count)
+                        }
+                        output.fd.sync()
+                    }
+                }
+                if (total == 0L) error("JavaScript agent is empty")
+                if (destination.exists() && !destination.delete()) error("Unable to replace the previous agent")
+                if (!temporary.renameTo(destination)) error("Unable to store the selected agent")
+                if (!destination.setReadable(true, true) || !destination.setWritable(false, false)) {
+                    error("Unable to secure the selected agent")
+                }
+                val sha = digest.digest().joinToString("") { "%02x".format(it) }
+                InstrumentationSettings.setScriptPathForPackage(packageName, destination.absolutePath)
+                InstrumentationSettings.setModeForPackage(packageName, InstrumentationSettings.MODE_LOCAL_SCRIPT)
+                metadata.edit()
+                    .putString("$packageName.scriptName", name)
+                    .putString("$packageName.scriptSha", sha)
+                    .putLong("$packageName.scriptSize", total)
+                    .apply()
+                BlackBoxCore.get().stopPackage(packageName, 0)
+                name
+            }
+            runOnUiThread {
+                setLoading(false)
+                result.onSuccess {
+                    notify("$it is ready for on-device launch")
+                    showWorkspace()
+                }.onFailure { error ->
+                    File(agentDirectory(packageName), "agent.js.partial").delete()
+                    notify("Agent import failed: ${error.message}")
+                }
+            }
+        }
+    }
+
+    private fun showAppMenu(anchor: View, info: PackageInfo, appLabel: String) {
+        PopupMenu(this, anchor).apply {
+            menu.add(Menu.NONE, MENU_DETAILS, 0, R.string.fb_details)
+            menu.add(Menu.NONE, MENU_RUNTIME, 1, R.string.fb_runtime_details)
+            menu.add(Menu.NONE, MENU_CLEAR, 2, R.string.fb_clear_data)
+            menu.add(Menu.NONE, MENU_REMOVE, 3, R.string.fb_remove_guest)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    MENU_DETAILS -> showAppDetails(info, appLabel)
+                    MENU_RUNTIME -> showRuntime(info.packageName)
+                    MENU_CLEAR -> clearApp(info.packageName)
+                    MENU_REMOVE -> removeApp(info.packageName, appLabel)
+                }
+                true
+            }
+            show()
+        }
+    }
+
+    private fun showAppDetails(info: PackageInfo, appLabel: String) {
+        val packageName = info.packageName
+        val details = buildString {
+            append(appLabel).append('\n').append(packageName)
+            append("\n\nVersion  ").append(info.versionName ?: "—")
+            append("\nTarget SDK  ").append(metadata.getInt("$packageName.targetSdk", info.applicationInfo?.targetSdkVersion ?: -1))
+            append("\nABI  ").append(metadata.getString("$packageName.abi", "Unknown"))
+            append("\n\nSource\n").append(metadata.getString("$packageName.source", "Unknown"))
+            append("\n\nAPK SHA-256\n").append(metadata.getString("$packageName.sha256", "Unknown"))
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.fb_details)
+            .setMessage(details)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun clearApp(packageName: String) {
+        setLoading(true)
+        worker.execute {
+            val result = runCatching {
+                BlackBoxCore.get().stopPackage(packageName, 0)
+                BlackBoxCore.get().clearPackage(packageName, 0)
+            }
+            runOnUiThread {
+                setLoading(false)
+                result.onSuccess { notify("Guest data cleared") }
+                    .onFailure { notify("Unable to clear guest data: ${it.message}") }
+            }
+        }
+    }
+
+    private fun removeApp(packageName: String, appLabel: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.fb_remove_title))
+            .setMessage("$appLabel\n\n${getString(R.string.fb_remove_body)}")
+            .setPositiveButton(R.string.fb_remove) { _, _ ->
+                setLoading(true)
+                worker.execute {
+                    val result = runCatching {
+                        BlackBoxCore.get().stopPackage(packageName, 0)
+                        BlackBoxCore.get().uninstallPackageAsUser(packageName, 0)
+                        deleteAgentDirectory(packageName)
+                        InstrumentationSettings.clearPackage(packageName)
+                        metadata.edit()
+                            .remove("$packageName.scriptName")
+                            .remove("$packageName.scriptSha")
+                            .remove("$packageName.scriptSize")
+                            .apply()
+                    }
+                    runOnUiThread {
+                        setLoading(false)
+                        result.onSuccess { showWorkspace() }
+                            .onFailure { notify("Unable to remove guest: ${it.message}") }
+                    }
+                }
+            }
+            .setNegativeButton(R.string.fb_cancel, null)
+            .show()
+    }
+
+    private fun openApkPicker() {
+        apkPicker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream"))
+    }
+
+    private fun importApk(uri: Uri) {
+        val name = displayName(uri, "selected.apk")
+        val lowerName = name.lowercase(Locale.ROOT)
+        if (!lowerName.endsWith(".apk") || lowerName.endsWith(".apks") ||
+            lowerName.endsWith(".xapk") || lowerName.endsWith(".apkm")) {
+            notify("Select one base .apk file; app bundles and split sets are not supported")
+            return
+        }
+        setLoading(true)
+        worker.execute {
+            val directory = File(filesDir, "imported-apks").apply { mkdirs() }
+            val temporary = File.createTempFile("import-", ".partial", directory)
+            val result = runCatching {
+                val digest = MessageDigest.getInstance("SHA-256")
+                contentResolver.openInputStream(uri).use { input ->
+                    requireNotNull(input) { "Unable to open the selected APK" }
+                    FileOutputStream(temporary).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            digest.update(buffer, 0, count)
+                            output.write(buffer, 0, count)
+                        }
+                        output.fd.sync()
+                    }
+                }
+                val originalHash = digest.digest().joinToString("") { "%02x".format(it) }
+                val archiveInfo = packageManager.getPackageArchiveInfo(temporary.absolutePath, PackageManager.GET_META_DATA)
+                    ?: error("Android could not parse this APK")
+                if (!archiveInfo.splitNames.isNullOrEmpty()) error("Split-only APKs are not supported")
+                val abi = ApkInspector.inspect(temporary)
+                if (!abi.supported) error("Unsupported native ABI: ${abi.description()}")
+                val safePackage = safePackageName(archiveInfo.packageName)
+                val stored = File(directory, "$safePackage-${originalHash.take(12)}.apk")
                 if (stored.exists() && !stored.delete()) error("Unable to replace the imported APK")
                 if (!temporary.renameTo(stored)) error("Unable to move APK into private storage")
                 if (ApkIntegrity.sha256(stored) != originalHash) error("APK integrity check failed after import")
@@ -850,4 +1005,3 @@ class FridaBoxActivity : AppCompatActivity() {
         private const val MENU_REMOVE = 4
     }
 }
-
