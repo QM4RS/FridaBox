@@ -1,7 +1,3 @@
-Exit code: 0
-Wall time: 0.5 seconds
-Total output lines: 1008
-Output:
 package com.qm4rs.fridabox
 
 import android.content.ClipData
