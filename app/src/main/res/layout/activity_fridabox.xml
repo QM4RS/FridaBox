@@ -149,4 +149,3 @@
         app:menu="@menu/fridabox_navigation" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
