@@ -197,8 +197,7 @@ class FridaBoxActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_HORIZONTAL
                 setPadding(dp(24), dp(36), dp(24), dp(36))
                 addView(ImageView(this@FridaBoxActivity).apply {
-                    setImageResource(R.drawable.ic_fridabox_mark)
-                    imageTintList = ColorStateList.valueOf(color(R.color.fb_text_secondary))
+                    setImageResource(R.drawable.logo)
                 }, LinearLayout.LayoutParams(dp(52), dp(52)))
                 addView(labelText(getString(R.string.fb_no_guests), R.color.fb_text_primary, 19f, true).apply {
                     setPadding(0, dp(16), 0, 0)
