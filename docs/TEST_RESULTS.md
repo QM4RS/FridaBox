@@ -1,6 +1,6 @@
 # Test results
 
-Validation date: 2026-07-19
+Validation date: 2026-07-27
 
 ## Host validation
 
@@ -12,10 +12,10 @@ The following commands completed successfully on the build host:
 .\gradlew.bat :app:assembleDebug
 .\gradlew.bat test
 .\gradlew.bat :app:check
-.\gradlew.bat :app:verifyDebugApkFridaPackaging :app:verifyInstrumentationOrdering :app:verifyDemoGuestUnmodified
+.\gradlew.bat :app:verifyDebugApkHasNoGadget :app:verifyInstrumentationOrdering :app:verifyDemoGuestUnmodified
 npm ci
 python tools\build_frida_agents.py
-python -m py_compile tools\attach_guest.py tools\forward_frida_ports.py tools\fetch_frida_gadget.py tools\build_frida_agents.py
+python -m py_compile tools\attach_guest.py tools\forward_frida_ports.py tools\build_frida_agents.py
 ```
 
 For this workspace path, native builds used:
@@ -24,8 +24,12 @@ For this workspace path, native builds used:
 $env:FRIDABOX_NDK_PROJECT_DIR='D:\FridaBoxBuild\Bcore'
 ```
 
-Unit-test results: 16 executions passed, with zero failures, errors, or skips.
-This is eight test methods run for both debug and release variants:
+Unit tests passed with zero failures, including Gadget asset naming, ten-item
+release pagination, ELF ABI validation, and combined base/split APK inspection.
+The original suite also covers:
+
+The app `check` task also verifies that all committed UI control vectors are
+byte-for-byte reproducible from pinned `@tabler/icons` 3.45.0 sources.
 
 - `ApkInspectorTest`: 3 per variant;
 - `ApkIntegrityTest`: 1 per variant;
@@ -35,13 +39,9 @@ This is eight test methods run for both debug and release variants:
 The final APK and custom verification tasks passed:
 
 - output: `app/build/outputs/apk/debug/FridaBox_4.0.0_arm64-v8a-debug.apk`;
-- size: 19,977,904 bytes;
-- SHA-256: `a87af38ff7f4a54d2cdc0207ac68319a1a05ab8067b7acdeb057c6c967ed2573`;
 - packaged ABIs: ARM64 only;
-- packaged native files: `libblackbox.so`, `libfrida-gadget.so`, and
-  `libfrida-gadget.config.so` under `lib/arm64-v8a/`;
-- Frida Gadget 17.16.0 SHA-256:
-  `6bf149e5d1c5ec701e7b822cab57bb243f1c2a03318fa974fe373ee711a9ed9e`;
+- packaged native files do not include a Frida Gadget binary or
+  Gadget configuration;
 - early-load ordering and byte-identical demo-asset checks passed.
 - pinned Frida 17 registry/bootstrap/sample agents rebuilt successfully, and
   controller help plus empty-range discovery completed successfully.

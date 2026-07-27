@@ -11,8 +11,8 @@
         <item name="colorOnSurface">@color/fb_text_primary</item>
         <item name="colorError">@color/fb_error</item>
         <item name="android:colorAccent">@color/fb_primary</item>
-        <item name="android:windowBackground">@color/fb_background</item>
-        <item name="android:navigationBarColor">@color/fb_surface</item>
+        <item name="android:windowBackground">@drawable/bg_liquid_glass_app</item>
+        <item name="android:navigationBarColor">@color/fb_background</item>
         <item name="android:statusBarColor">@color/fb_background</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
@@ -22,7 +22,7 @@
     </style>
 
     <style name="ThemeOverlay.FridaBox.Dialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
-        <item name="colorSurface">@color/fb_surface_high</item>
+        <item name="colorSurface">@color/fb_glass_surface_strong</item>
         <item name="colorOnSurface">@color/fb_text_primary</item>
         <item name="colorPrimary">@color/fb_primary</item>
     </style>

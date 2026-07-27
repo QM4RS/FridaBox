@@ -182,12 +182,12 @@ in On-device, Computer, and Clean modes. Evidence and exact commands are in
 - JDK 21;
 - Android SDK 35 and NDK 29.0.14206865;
 - Python 3.10+;
-- Node.js 20+ and npm when rebuilding the bundled Frida 17 agents.
+- Node.js 20+ and npm for the pinned Frida agent toolchain and official Tabler
+  Icons source package.
 
 ### Build
 
 ```text
-python tools/fetch_frida_gadget.py
 npm ci
 python tools/build_frida_agents.py
 ./gradlew :app:assembleDebug :Bcore:testDebugUnitTest :app:testDebugUnitTest :app:check
@@ -200,10 +200,12 @@ documented in [docs/BUILDING.md](docs/BUILDING.md). The output is written under
 ### Use
 
 1. Install and open FridaBox.
-2. Tap **Import APK** and select an ARM64 base APK.
-3. Choose **On-device**, **Computer**, or **Clean** on that guest's card.
-4. Select an agent for On-device mode, or attach normally in Computer mode.
-5. Inspect live state in the **Runtime** tab.
+2. Open **Gadgets** and download a compatible Official Frida version.
+3. Select one downloaded Gadget as active.
+4. Tap the import icon and choose an installed app or an ARM64 base APK file.
+5. Tap the guest icon and choose **On-device**, **Computer**, or **Clean** in the launch panel.
+6. Select an agent for On-device mode, or attach normally in Computer mode.
+7. Inspect live state in the **Runtime** tab.
 
 See [docs/USAGE.md](docs/USAGE.md) and
 [docs/FRIDA_CONNECTION.md](docs/FRIDA_CONNECTION.md) for the complete workflow.
@@ -246,8 +248,9 @@ docs/                Build, usage, limitations and device evidence
 
 ## Scope and limitations
 
-FridaBox currently targets single-file ARM64 APKs. Split APK sets, privileged or
-system applications, full Google Play Services, Play Integrity, hardware-backed
+FridaBox targets ARM64 APKs and can clone the active base/split set of a
+launchable installed app. Standalone split archives, privileged system
+applications, full Google Play Services, Play Integrity, hardware-backed
 attestation, and perfect anti-instrumentation resistance are outside the current
 scope. Vendor behavior and hidden Android APIs can still affect compatibility.
 

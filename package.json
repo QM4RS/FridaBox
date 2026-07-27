@@ -1,10 +1,15 @@
 {
   "name": "fridabox-agents",
   "private": true,
+  "scripts": {
+    "generate:android-icons": "node tools/generate_tabler_android_icons.mjs",
+    "verify:android-icons": "node tools/generate_tabler_android_icons.mjs --check"
+  },
   "dependencies": {
     "frida-java-bridge": "7.0.13"
   },
   "devDependencies": {
+    "@tabler/icons": "3.45.0",
     "frida-compile": "19.0.5"
   }
 }

@@ -4,15 +4,18 @@
     android:id="@+id/fridabox_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/fb_background"
+    android:background="@drawable/bg_liquid_glass_app"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/fb_background"
-        android:elevation="8dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:background="@android:color/transparent"
+        android:elevation="0dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -20,8 +23,9 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:background="@color/fb_background"
+            android:layout_height="64dp"
+            android:background="@drawable/bg_glass_toolbar"
+            android:elevation="10dp"
             android:contentInsetStart="0dp"
             android:contentInsetEnd="0dp">
 
@@ -31,12 +35,12 @@
                 android:gravity="center_vertical"
                 android:layoutDirection="ltr"
                 android:orientation="horizontal"
-                android:paddingStart="18dp"
-                android:paddingEnd="18dp">
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp">
 
                 <ImageView
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:contentDescription="@string/fb_brand"
                     android:scaleType="centerInside"
                     android:src="@drawable/logo" />
@@ -118,29 +122,32 @@
         app:layout_constraintTop_toBottomOf="@id/app_bar"
         app:trackColor="@color/fb_surface" />
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/import_fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/import_fab_icon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_marginEnd="18dp"
-        android:layout_marginBottom="18dp"
-        android:letterSpacing="0"
-        android:text="@string/fb_import_apk"
-        android:textAllCaps="false"
-        android:textColor="@color/fb_black"
+        android:layout_marginBottom="14dp"
+        android:contentDescription="@string/fb_import"
         app:backgroundTint="@color/fb_primary"
-        app:icon="@drawable/ic_fb_add"
-        app:iconTint="@color/fb_black"
+        app:elevation="12dp"
+        app:srcCompat="@drawable/ic_fb_import"
+        app:tint="@color/fb_black"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
         android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:background="@color/fb_surface"
+        android:layout_height="64dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_glass_navigation"
+        android:elevation="14dp"
         app:itemActiveIndicatorStyle="@style/Widget.MaterialComponents.BottomNavigationView.Colored"
         app:itemIconTint="@color/fb_text_primary"
+        app:itemRippleColor="@color/fb_glass_highlight"
         app:itemTextColor="@color/fb_text_primary"
         app:labelVisibilityMode="labeled"
         app:layout_constraintBottom_toBottomOf="parent"

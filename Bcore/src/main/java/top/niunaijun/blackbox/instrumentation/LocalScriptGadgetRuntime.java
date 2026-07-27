@@ -46,18 +46,10 @@ final class LocalScriptGadgetRuntime {
             throw new IOException("Unable to secure the instrumented JavaScript agent");
         }
 
-        File source = new File(context.getApplicationInfo().nativeLibraryDir, "libfrida-gadget.so");
-        if (!source.isFile()) throw new IOException("Packaged Frida Gadget is missing");
+        File source = DownloadedGadgetRuntime.requireSelected(context);
 
         File runtime = new File(directory, RUNTIME_NAME);
-        if (!runtime.isFile() || runtime.length() != source.length()) {
-            copyAtomically(source, runtime);
-        }
-        if (!runtime.setReadable(true, false)
-                || !runtime.setExecutable(true, false)
-                || !runtime.setWritable(false, false)) {
-            throw new IOException("Unable to secure private Frida Gadget permissions");
-        }
+        DownloadedGadgetRuntime.syncSelected(source, runtime);
 
         File config = new File(directory, CONFIG_NAME);
         writeUtf8Atomically(config, buildConfig(packageName, instrumentedAgent.getAbsolutePath()));
