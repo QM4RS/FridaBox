@@ -2,6 +2,7 @@ package com.qm4rs.fridabox;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -13,23 +14,36 @@ public final class ApkInspector {
     }
 
     public static Result inspect(File apk) throws IOException {
+        return inspect(Collections.singletonList(apk));
+    }
+
+    public static Result inspect(File... apks) throws IOException {
+        return inspect(Arrays.asList(apks));
+    }
+
+    public static Result inspect(Iterable<File> apks) throws IOException {
         Set<String> abis = new LinkedHashSet<>();
         boolean hasNativeLibraries = false;
-        try (ZipFile archive = new ZipFile(apk)) {
-            if (archive.getEntry("AndroidManifest.xml") == null) {
-                throw new IOException("The selected file has no AndroidManifest.xml");
-            }
-            for (ZipEntry entry : Collections.list(archive.entries())) {
-                String name = entry.getName();
-                if (!entry.isDirectory() && name.startsWith("lib/") && name.endsWith(".so")) {
-                    String[] parts = name.split("/", 3);
-                    if (parts.length == 3) {
-                        hasNativeLibraries = true;
-                        abis.add(parts[1]);
+        boolean inspectedAny = false;
+        for (File apk : apks) {
+            inspectedAny = true;
+            try (ZipFile archive = new ZipFile(apk)) {
+                if (archive.getEntry("AndroidManifest.xml") == null) {
+                    throw new IOException("The selected file has no AndroidManifest.xml");
+                }
+                for (ZipEntry entry : Collections.list(archive.entries())) {
+                    String name = entry.getName();
+                    if (!entry.isDirectory() && name.startsWith("lib/") && name.endsWith(".so")) {
+                        String[] parts = name.split("/", 3);
+                        if (parts.length == 3) {
+                            hasNativeLibraries = true;
+                            abis.add(parts[1]);
+                        }
                     }
                 }
             }
         }
+        if (!inspectedAny) throw new IOException("No APK files were provided");
         boolean supported = !hasNativeLibraries || abis.contains("arm64-v8a");
         return new Result(hasNativeLibraries, supported, abis);
     }

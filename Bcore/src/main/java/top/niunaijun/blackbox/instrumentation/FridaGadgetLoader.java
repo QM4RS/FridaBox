@@ -52,7 +52,8 @@ public final class FridaGadgetLoader {
                     System.load(runtime.getAbsolutePath());
                 } else {
                     Log.i(TAG, "Loading Frida Gadget listener for " + GuestRuntimeRegistry.getGuestProcessName());
-                    System.loadLibrary("frida-gadget");
+                    File runtime = DownloadedGadgetRuntime.prepareListener(packageName);
+                    System.load(runtime.getAbsolutePath());
                 }
                 loaded = true;
                 InstrumentationStatusStore.recordLoaded();

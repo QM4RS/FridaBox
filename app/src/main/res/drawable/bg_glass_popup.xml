@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="22dp" />
+    <gradient
+        android:angle="135"
+        android:startColor="#F02A3E58"
+        android:centerColor="#E01C2D45"
+        android:endColor="#D916263C" />
+    <stroke android:width="1dp" android:color="@color/fb_glass_outline" />
+</shape>

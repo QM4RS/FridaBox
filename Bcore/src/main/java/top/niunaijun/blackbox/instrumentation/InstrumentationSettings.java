@@ -12,6 +12,11 @@ public final class InstrumentationSettings {
     public static final String KEY_BASE_PORT = "frida_base_port";
     public static final String KEY_SCAN_COUNT = "frida_port_scan_count";
     public static final String KEY_ADVANCED_LOGS = "show_advanced_logs";
+    public static final String KEY_GADGET_PATH = "selected_gadget_path";
+    public static final String KEY_GADGET_SOURCE = "selected_gadget_source";
+    public static final String KEY_GADGET_VERSION = "selected_gadget_version";
+    public static final String KEY_GADGET_ABI = "selected_gadget_abi";
+    public static final String KEY_GADGET_SHA256 = "selected_gadget_sha256";
     private static final String PACKAGE_PREFIX = "package_enabled_";
     private static final String PACKAGE_MODE_PREFIX = "package_mode_";
     private static final String PACKAGE_SCRIPT_PREFIX = "package_script_";
@@ -95,6 +100,54 @@ public final class InstrumentationSettings {
 
     public static boolean showAdvancedLogs() {
         return preferences().getBoolean(KEY_ADVANCED_LOGS, false);
+    }
+
+    public static String getSelectedGadgetPath() {
+        return preferences().getString(KEY_GADGET_PATH, null);
+    }
+
+    public static String getSelectedGadgetSource() {
+        return preferences().getString(KEY_GADGET_SOURCE, null);
+    }
+
+    public static String getSelectedGadgetVersion() {
+        return preferences().getString(KEY_GADGET_VERSION, null);
+    }
+
+    public static String getSelectedGadgetAbi() {
+        return preferences().getString(KEY_GADGET_ABI, null);
+    }
+
+    public static String getSelectedGadgetSha256() {
+        return preferences().getString(KEY_GADGET_SHA256, null);
+    }
+
+    public static boolean setSelectedGadget(
+            String path, String source, String version, String abi, String sha256) {
+        if (path == null || path.trim().isEmpty()
+                || source == null || source.trim().isEmpty()
+                || version == null || version.trim().isEmpty()
+                || abi == null || abi.trim().isEmpty()
+                || sha256 == null || sha256.trim().isEmpty()) {
+            return false;
+        }
+        return preferences().edit()
+                .putString(KEY_GADGET_PATH, path)
+                .putString(KEY_GADGET_SOURCE, source)
+                .putString(KEY_GADGET_VERSION, version)
+                .putString(KEY_GADGET_ABI, abi)
+                .putString(KEY_GADGET_SHA256, sha256)
+                .commit();
+    }
+
+    public static boolean clearSelectedGadget() {
+        return preferences().edit()
+                .remove(KEY_GADGET_PATH)
+                .remove(KEY_GADGET_SOURCE)
+                .remove(KEY_GADGET_VERSION)
+                .remove(KEY_GADGET_ABI)
+                .remove(KEY_GADGET_SHA256)
+                .commit();
     }
 
     static int clamp(int value, int minimum, int maximum, int fallback) {

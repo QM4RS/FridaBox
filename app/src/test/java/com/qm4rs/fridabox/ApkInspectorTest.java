@@ -37,6 +37,15 @@ public class ApkInspectorTest {
         assertFalse(result.supported);
     }
 
+    @Test
+    public void splitNativeLibrariesAreInspectedTogether() throws Exception {
+        File base = apkWith("classes.dex");
+        File arm64Split = apkWith("lib/arm64-v8a/libsample.so");
+        ApkInspector.Result result = ApkInspector.inspect(base, arm64Split);
+        assertTrue(result.hasNativeLibraries);
+        assertTrue(result.supported);
+    }
+
     private File apkWith(String entry) throws Exception {
         File file = temporary.newFile("test-" + System.nanoTime() + ".apk");
         try (ZipOutputStream output = new ZipOutputStream(new FileOutputStream(file))) {

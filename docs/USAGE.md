@@ -5,12 +5,30 @@ Importing an APK does not install that package into Android's real PackageManage
 
 ## Import an application
 
-1. Open **Workspace** and tap **Import APK**.
-2. Select one ARM64 base `.apk` through Android's document picker.
-3. FridaBox validates the APK, records its SHA-256, and creates a private guest.
+1. Open **Workspace** and tap the import icon.
+2. Choose **Import from apps** to clone a launchable app already installed on
+   the device, or **Import from file** to select one base `.apk` through
+   Android's document picker.
+3. FridaBox validates the full installed base/split set or selected file,
+   records its SHA-256 fingerprint, and creates a private guest.
 
-Split-only packages (`.apks`, `.xapk`, and `.apkm`) and unsupported native ABIs
-are rejected.
+Split-only files (`.apks`, `.xapk`, and `.apkm`) and unsupported native ABIs are
+rejected. Installed split applications are imported through their system package
+so their active base and split APKs remain available to the virtual runtime.
+
+## Install a Gadget
+
+1. Open **Gadgets**. FridaBox detects the device ABI and only offers matching
+   release assets.
+2. Tap **Browse versions**. The minimal release browser loads Official builds
+   from `frida/frida` ten at a time as the list is scrolled.
+3. Download any listed version. Downloads are decompressed in private storage,
+   checked as ELF libraries, and rejected when their architecture does not match.
+4. Select any installed version as active. Downloading another version does not
+   replace the active selection unless no Gadget had been selected yet.
+
+Instrumented launches require an active Gadget. Clean mode remains available
+without one. Gadget binaries are never bundled in the FridaBox APK.
 
 ## Choose a launch mode
 
@@ -34,7 +52,7 @@ Switching modes always stops the previous guest process before the next launch.
 
 ## On-device agents
 
-Select **On-device**, tap **Select JavaScript**, review the trust warning, and
+Tap an app icon, select **On-device**, tap **Select JavaScript**, review the trust warning, and
 choose a `.js` file up to 16 MiB. The original file is not modified. The private
 copy and the private Gadget executable are made read-only before execution.
 
@@ -46,7 +64,7 @@ interceptors, and in-app overlays continue to run in the guest process.
 
 The **Runtime** tab reports the latest package, process, virtual user ID, virtual
 process slot, source APK, ClassLoader, selected mode, state, and latest error.
-Use **Manage** on an app card for app details, runtime details, virtual data
+Use **Manage** in an app's launch panel for app details, runtime details, virtual data
 clearing, or removal from the private workspace.
 
 Only run JavaScript agents you trust. An on-device agent executes with the same

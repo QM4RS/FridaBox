@@ -7,29 +7,29 @@
 - Android NDK 29.0.13846066 when available. This build host only had the closely
   related complete NDK 29.0.14206865, which is recorded in `docs/BASELINE.md`.
 - Python 3.10 or newer.
-- Node.js 20 or newer and npm for reproducibly building Frida 17 Java agents.
+- Node.js 20 or newer and npm for reproducibly building Frida 17 Java agents
+  and generating Android vectors from the official `@tabler/icons` package.
 
-Create `local.properties` with the SDK path, then fetch the pinned official
-Gadget:
-
-```powershell
-python tools\fetch_frida_gadget.py
-```
-
-The script uses the GitHub Releases API and Python's standard `lzma` module. The
-build fails with a direct instruction if the binary is absent. No XZ archive is
-kept.
+Create `local.properties` with the SDK path. Frida Gadget is intentionally not a
+build input and no Gadget binary is packaged in the APK. After installation, the
+user downloads and selects an ABI-compatible Official Frida build from the
+in-app **Gadgets** screen.
 
 Install the pinned Java bridge/compiler and build the controller agents:
 
 ```powershell
 npm ci
+npm run verify:android-icons
 python tools\build_frida_agents.py
 ```
 
 Frida 17 no longer bundles runtime bridges into API-loaded GumJS agents. The
 compiled files under `scripts/dist/` are reproducible from the source scripts,
 `package.json`, and `package-lock.json`.
+
+UI control icons are generated from pinned `@tabler/icons` sources with
+`npm run generate:android-icons`. The app `check` task runs the matching
+verification script and fails if a committed Android vector is out of sync.
 
 On Windows, if the repository path contains spaces, create a no-space junction
 and set the Bcore-only native path override:
@@ -52,6 +52,8 @@ Build and test:
 The debug host build depends on the sample build and copies its byte-identical
 APK into generated debug assets. Generated sample APKs are not source-controlled.
 The final host output is under `app/build/outputs/apk/debug/` and is ARM64-only.
+`verifyDebugApkHasNoGadget` inspects the assembled APK and fails if a Gadget
+library or configuration is accidentally bundled again.
 
 ## Production release
 
