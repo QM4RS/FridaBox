@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="app/src/main/res/drawable-nodpi/logo.png" alt="FridaBox logo" width="180">
+
 # FridaBox
 
 ### On-device Android instrumentation, inside a private virtual workspace
@@ -264,8 +266,8 @@ internally consistent and reducing avoidable instrumentation fingerprints:
 - research safe mediation of `/proc`, including coherent views of process maps;
 - improve filesystem, package, process, Binder, identity, ClassLoader, and
   service behavior so guests observe a more faithful sandbox;
-- replace the workable Codex-assisted UI baseline with a human-led product
-  design pass, an original FridaBox icon system, and a stronger visual identity;
+- continue refining the FridaBox product identity and visual system around the
+  project logo;
 - expand the Android/vendor test matrix and add regression probes for every
   detection surface addressed.
 
