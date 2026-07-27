@@ -56,6 +56,11 @@ public final class GuestRuntimeRegistry {
     public static ClassLoader getGuestClassLoader() { return guestClassLoader; }
     public static String getGuestSourceDir() { return guestSourceDir; }
     public static boolean isInstrumentationEnabled() { return instrumentationEnabled; }
+    public static boolean isPrimaryProcess() {
+        String primaryProcess = guestApplicationInfo == null ? null : guestApplicationInfo.processName;
+        if (primaryProcess == null || primaryProcess.isEmpty()) primaryProcess = guestPackageName;
+        return primaryProcess != null && primaryProcess.equals(guestProcessName);
+    }
     public static String getLastError() { return lastError; }
     public static long getInitializationTimestamp() { return initializationTimestamp; }
 
@@ -81,6 +86,7 @@ public final class GuestRuntimeRegistry {
                 "\"virtualProcessId\":" + virtualProcessId + ',' +
                 "\"sourceDir\":" + quote(guestSourceDir) + ',' +
                 "\"instrumentationEnabled\":" + instrumentationEnabled + ',' +
+                "\"primaryProcess\":" + isPrimaryProcess() + ',' +
                 "\"lastError\":" + quote(lastError) + ',' +
                 "\"initializedAt\":" + initializationTimestamp +
                 '}';

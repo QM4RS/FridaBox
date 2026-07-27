@@ -15,9 +15,28 @@ public final class FridaGadgetLoader {
     private FridaGadgetLoader() {
     }
 
+    /** Listener mode starts immediately; autonomous scripts wait for the guest lifecycle. */
+    public static boolean loadAtProcessBind() {
+        String packageName = GuestRuntimeRegistry.getGuestPackageName();
+        String mode = InstrumentationSettings.getModeForPackage(packageName);
+        if (InstrumentationSettings.MODE_LOCAL_SCRIPT.equals(mode)) {
+            Log.i(TAG, "Deferring on-device agent until the guest application is ready");
+            return false;
+        }
+        return loadIfEnabled();
+    }
+
     public static boolean loadIfEnabled() {
         if (!GuestRuntimeRegistry.isInstrumentationEnabled()) {
             Log.i(TAG, "Instrumentation disabled for this guest process");
+            return false;
+        }
+        String packageName = GuestRuntimeRegistry.getGuestPackageName();
+        String mode = InstrumentationSettings.getModeForPackage(packageName);
+        if (InstrumentationSettings.MODE_LOCAL_SCRIPT.equals(mode)
+                && !GuestRuntimeRegistry.isPrimaryProcess()) {
+            Log.i(TAG, "Skipping on-device agent in secondary process "
+                    + GuestRuntimeRegistry.getGuestProcessName());
             return false;
         }
         if (loaded) return true;
@@ -26,8 +45,6 @@ public final class FridaGadgetLoader {
             if (!ATTEMPTED.compareAndSet(false, true)) return false;
             try {
                 InstrumentationStatusStore.recordBinding();
-                String packageName = GuestRuntimeRegistry.getGuestPackageName();
-                String mode = InstrumentationSettings.getModeForPackage(packageName);
                 if (InstrumentationSettings.MODE_LOCAL_SCRIPT.equals(mode)) {
                     String scriptPath = InstrumentationSettings.getScriptPathForPackage(packageName);
                     File runtime = LocalScriptGadgetRuntime.prepare(packageName, scriptPath);

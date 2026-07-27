@@ -16,6 +16,7 @@ public final class InstrumentationStatusStore {
     }
 
     public static void recordBinding() {
+        if (!GuestRuntimeRegistry.isPrimaryProcess()) return;
         String packageName = GuestRuntimeRegistry.getGuestPackageName();
         String mode = InstrumentationSettings.getModeForPackage(packageName);
         String state;
@@ -49,6 +50,7 @@ public final class InstrumentationStatusStore {
     }
 
     public static void recordLoaded() {
+        if (!GuestRuntimeRegistry.isPrimaryProcess()) return;
         String mode = preferences().getString("runtime_mode", InstrumentationSettings.MODE_COMPUTER);
         String state = InstrumentationSettings.MODE_LOCAL_SCRIPT.equals(mode)
                 ? "local_script_active" : "computer_attached";
@@ -56,6 +58,7 @@ public final class InstrumentationStatusStore {
     }
 
     public static void recordError(String error) {
+        if (!GuestRuntimeRegistry.isPrimaryProcess()) return;
         preferences().edit().putString("runtime_state", "failed").putString("runtime_error", error).commit();
     }
 }

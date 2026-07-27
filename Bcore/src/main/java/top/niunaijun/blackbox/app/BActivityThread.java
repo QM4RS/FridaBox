@@ -420,7 +420,7 @@ public class BActivityThread extends IBActivityThread.Stub {
                 Slog.w(TAG, "Unable to set guest context ClassLoader: " + error.getMessage());
             }
         }
-        FridaGadgetLoader.loadIfEnabled();
+        FridaGadgetLoader.loadAtProcessBind();
 
         AppBindData bindData = new AppBindData();
         bindData.appInfo = applicationInfo;

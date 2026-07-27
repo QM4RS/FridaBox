@@ -20,6 +20,7 @@ public class GuestRuntimeRegistryTest {
     public void initializeReplacesProcessLocalSnapshot() {
         ApplicationInfo info = new ApplicationInfo();
         info.sourceDir = "/private/original.apk";
+        info.processName = "sample.one";
         ClassLoader loader = getClass().getClassLoader();
         GuestRuntimeRegistry.initialize("sample.one", "sample.one:remote", 3, 7, info, loader, true);
 
@@ -30,7 +31,17 @@ public class GuestRuntimeRegistryTest {
         assertSame(loader, GuestRuntimeRegistry.getGuestClassLoader());
         assertEquals("/private/original.apk", GuestRuntimeRegistry.getGuestSourceDir());
         assertTrue(GuestRuntimeRegistry.isInstrumentationEnabled());
+        assertFalse(GuestRuntimeRegistry.isPrimaryProcess());
         assertTrue(GuestRuntimeRegistry.describe().contains("\"package\":\"sample.one\""));
+    }
+
+    @Test
+    public void primaryProcessUsesApplicationProcessName() {
+        ApplicationInfo info = new ApplicationInfo();
+        info.processName = "sample.custom";
+        GuestRuntimeRegistry.initialize("sample", "sample.custom", 0, 1, info, null, true);
+
+        assertTrue(GuestRuntimeRegistry.isPrimaryProcess());
     }
 
     @Test

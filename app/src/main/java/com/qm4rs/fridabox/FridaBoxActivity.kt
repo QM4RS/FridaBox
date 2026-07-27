@@ -377,6 +377,16 @@ class FridaBoxActivity : AppCompatActivity() {
     }
 
     private fun launch(packageName: String, mode: String) {
+        settings.edit()
+            .putString("runtime_package", packageName)
+            .putString("runtime_mode", mode)
+            .putString("runtime_state", when (mode) {
+                InstrumentationSettings.MODE_LOCAL_SCRIPT -> "loading_local_script"
+                InstrumentationSettings.MODE_COMPUTER -> "waiting_for_attach"
+                else -> "idle"
+            })
+            .putString("runtime_error", null)
+            .apply()
         setLoading(true)
         worker.execute {
             val result = runCatching {
@@ -625,7 +635,7 @@ class FridaBoxActivity : AppCompatActivity() {
         binding.toolbar.title = getString(R.string.fb_runtime_title)
         binding.toolbar.subtitle = getString(R.string.fb_runtime_subtitle)
 
-        val packageName = settings.getString("runtime_package", packageHint) ?: packageHint
+        val packageName = packageHint ?: settings.getString("runtime_package", null)
         val state = settings.getString("runtime_state", "idle") ?: "idle"
         val mode = settings.getString("runtime_mode", packageName?.let {
             InstrumentationSettings.getModeForPackage(it)
@@ -664,6 +674,17 @@ class FridaBoxActivity : AppCompatActivity() {
                     append("\n\nThe private agent is loaded autonomously by Frida Gadget.")
                 }
             ))
+            if (packageName != null) {
+                binding.content.addView(outlineButton("Open agent logs") {
+                    if (!FridaBoxGuestLogOverlay.show(this, packageName)) {
+                        toast("No agent log is available for $packageName")
+                    }
+                }.apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply {
+                        topMargin = dp(14)
+                    }
+                })
+            }
         } else {
             binding.content.addView(infoCard("Clean launch", getString(R.string.fb_mode_clean_body)))
         }
