@@ -1,5 +1,10 @@
 package com.qm4rs.fridabox
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
 import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -8,6 +13,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -17,9 +23,12 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.InputType
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
@@ -56,6 +65,11 @@ import java.util.concurrent.Executors
 class FridaBoxActivity : AppCompatActivity() {
     private enum class Screen { WORKSPACE, GADGETS, RUNTIME, SETTINGS }
 
+    private data class ImportBubbleViews(
+        val scrim: View,
+        val actions: List<MaterialButton>
+    )
+
     private lateinit var binding: ActivityFridaboxBinding
     private val worker = Executors.newSingleThreadExecutor()
     private var screen = Screen.WORKSPACE
@@ -64,6 +78,10 @@ class FridaBoxActivity : AppCompatActivity() {
     private var installedAppsRequest = 0
     private var changingNavigation = false
     private var pendingScriptPackage: String? = null
+    private var importMenuOverlay: FrameLayout? = null
+    private var importMenuAnimator: AnimatorSet? = null
+    private var importMenuAnimationGeneration = 0
+    private var importMenuClosing = false
 
     @Suppress("DEPRECATION")
     private val settings: SharedPreferences by lazy {
@@ -103,6 +121,10 @@ class FridaBoxActivity : AppCompatActivity() {
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (importMenuOverlay != null) {
+                    dismissImportActions()
+                    return
+                }
                 if (screen == Screen.WORKSPACE) finish() else showWorkspace()
             }
         })
@@ -115,6 +137,7 @@ class FridaBoxActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        dismissImportActions(immediate = true)
         worker.shutdown()
         super.onDestroy()
     }
@@ -191,7 +214,7 @@ class FridaBoxActivity : AppCompatActivity() {
             isClickable = true
             isFocusable = true
             background = ContextCompat.getDrawable(this@FridaBoxActivity, R.drawable.bg_launcher_cell)
-            setOnClickListener { showAppLaunchDialog(info) }
+            setOnClickListener { showAppLaunchDialog(info, this) }
             addView(ImageView(this@FridaBoxActivity).apply {
                 runCatching {
                     setImageDrawable(info.applicationInfo?.loadIcon(BlackBoxCore.getPackageManager()))
@@ -221,27 +244,61 @@ class FridaBoxActivity : AppCompatActivity() {
         }
     }
 
-    private fun showAppLaunchDialog(info: PackageInfo) {
+    private fun showAppLaunchDialog(info: PackageInfo, source: View) {
         val dialog = Dialog(this)
         val root = FrameLayout(this).apply {
-            setPadding(dp(12), dp(24), dp(12), dp(12))
-            setOnClickListener { dialog.dismiss() }
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
-        val panel = appCard(info, dialog).apply { isClickable = true }
-        root.addView(panel, FrameLayout.LayoutParams(
+        val scrim = View(this).apply {
+            alpha = 0f
+            setBackgroundColor(Color.BLACK)
+        }
+        root.addView(scrim, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.BOTTOM
+            ViewGroup.LayoutParams.MATCH_PARENT
         ))
+
+        var dismissAnimated: ((() -> Unit)?) -> Unit = { after ->
+            dialog.dismiss()
+            resetAppIconMorph(source)
+            after?.invoke()
+        }
+        val panel = appCard(info) { after -> dismissAnimated(after) }.apply {
+            isClickable = true
+            alpha = 0f
+        }
+        val popoverWidth = minOf(
+            resources.displayMetrics.widthPixels - dp(24),
+            dp(300)
+        )
+        root.addView(panel, FrameLayout.LayoutParams(
+            popoverWidth,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.START
+        ).apply {
+            leftMargin = dp(12)
+            topMargin = dp(12)
+        })
+        scrim.setOnClickListener { dismissAnimated(null) }
         dialog.setContentView(root)
-        dialog.setCanceledOnTouchOutside(true)
+        dialog.setCanceledOnTouchOutside(false)
+        dialog.setCancelable(false)
+        dialog.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                dismissAnimated(null)
+                true
+            } else {
+                false
+            }
+        }
+        dialog.setOnDismissListener { resetAppIconMorph(source) }
         dialog.window?.apply {
             setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            attributes = attributes.apply { dimAmount = 0.42f }
+            attributes = attributes.apply { dimAmount = 0.18f }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                attributes = attributes.apply { blurBehindRadius = dp(36) }
+                attributes = attributes.apply { blurBehindRadius = dp(24) }
             }
         }
         dialog.show()
@@ -249,9 +306,133 @@ class FridaBoxActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        animateAppIconMorph(source, opening = true)
+
+        root.post {
+            if (!dialog.isShowing || panel.width == 0 || panel.height == 0) return@post
+            val sourceLocation = IntArray(2)
+            val rootLocation = IntArray(2)
+            source.getLocationOnScreen(sourceLocation)
+            root.getLocationOnScreen(rootLocation)
+            val sourceCenterX = sourceLocation[0] - rootLocation[0] + source.width / 2f
+            val sourceCenterY = sourceLocation[1] - rootLocation[1] + source.height / 2f
+            val margin = dp(12)
+            val idealLeft = (sourceCenterX - dp(44)).toInt()
+            val idealTop = (sourceCenterY - dp(44)).toInt()
+            val maxLeft = (root.width - panel.width - margin).coerceAtLeast(margin)
+            val maxTop = (root.height - panel.height - margin).coerceAtLeast(margin)
+            panel.layoutParams = (panel.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = idealLeft.coerceIn(margin, maxLeft)
+                topMargin = idealTop.coerceIn(margin, maxTop)
+            }
+
+            panel.post panelReady@ {
+                if (!dialog.isShowing || !panel.isAttachedToWindow) return@panelReady
+                val pivotX = (sourceCenterX - panel.left).coerceIn(0f, panel.width.toFloat())
+                val pivotY = (sourceCenterY - panel.top).coerceIn(0f, panel.height.toFloat())
+                val startScale = (source.width.toFloat() / panel.width).coerceIn(0.18f, 0.28f)
+                panel.apply {
+                    this.pivotX = pivotX
+                    this.pivotY = pivotY
+                    scaleX = startScale
+                    scaleY = startScale
+                    rotation = -0.8f
+                    alpha = 0.42f
+                }
+                val body = panel.getChildAt(0) as? LinearLayout
+                val animatedChildren = body?.let { container ->
+                    (0 until container.childCount).map { container.getChildAt(it) }
+                }.orEmpty()
+                animatedChildren.forEach { child ->
+                    child.alpha = 0f
+                    child.scaleX = 0.94f
+                    child.scaleY = 0.94f
+                    child.translationY = dp(12).toFloat()
+                }
+
+                addAppLaunchRipple(root, panel, sourceCenterX, sourceCenterY, delay = 0L)
+                var animation: AnimatorSet? = null
+                val openAnimators = mutableListOf<Animator>(
+                    ObjectAnimator.ofFloat(scrim, View.ALPHA, 0f, 0.14f).apply { duration = 190L },
+                    ObjectAnimator.ofPropertyValuesHolder(
+                        panel,
+                        PropertyValuesHolder.ofFloat(View.ALPHA, 0.42f, 1f),
+                        PropertyValuesHolder.ofFloat(View.SCALE_X, startScale, 1f),
+                        PropertyValuesHolder.ofFloat(View.SCALE_Y, startScale, 1f),
+                        PropertyValuesHolder.ofFloat(View.ROTATION, -0.8f, 0f)
+                    ).apply {
+                        duration = 360L
+                        interpolator = OvershootInterpolator(0.48f)
+                    }
+                )
+                animatedChildren.forEachIndexed { index, child ->
+                    openAnimators += ObjectAnimator.ofPropertyValuesHolder(
+                        child,
+                        PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 1f),
+                        PropertyValuesHolder.ofFloat(View.SCALE_X, 0.94f, 1f),
+                        PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.94f, 1f),
+                        PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, dp(12).toFloat(), 0f)
+                    ).apply {
+                        duration = 215L
+                        startDelay = 95L + index * 28L
+                        interpolator = OvershootInterpolator(0.88f)
+                    }
+                }
+                animation = AnimatorSet().apply {
+                    playTogether(openAnimators)
+                    start()
+                }
+
+                var closing = false
+                dismissAnimated = dismiss@ { after ->
+                    if (closing) return@dismiss
+                    closing = true
+                    animation?.cancel()
+                    animateAppIconMorph(source, opening = false)
+                    val closeAnimators = mutableListOf<Animator>(
+                        ObjectAnimator.ofFloat(scrim, View.ALPHA, scrim.alpha, 0f).apply { duration = 150L },
+                        ObjectAnimator.ofPropertyValuesHolder(
+                            panel,
+                            PropertyValuesHolder.ofFloat(View.ALPHA, panel.alpha, 0.18f),
+                            PropertyValuesHolder.ofFloat(View.SCALE_X, panel.scaleX, startScale),
+                            PropertyValuesHolder.ofFloat(View.SCALE_Y, panel.scaleY, startScale),
+                            PropertyValuesHolder.ofFloat(View.ROTATION, panel.rotation, 0.6f)
+                        ).apply {
+                            duration = 255L
+                            interpolator = AccelerateInterpolator(1.15f)
+                        }
+                    )
+                    animatedChildren.asReversed().forEachIndexed { index, child ->
+                        closeAnimators += ObjectAnimator.ofPropertyValuesHolder(
+                            child,
+                            PropertyValuesHolder.ofFloat(View.ALPHA, child.alpha, 0f),
+                            PropertyValuesHolder.ofFloat(View.SCALE_X, child.scaleX, 0.92f),
+                            PropertyValuesHolder.ofFloat(View.SCALE_Y, child.scaleY, 0.92f)
+                        ).apply {
+                            duration = 105L
+                            startDelay = index * 18L
+                        }
+                    }
+                    animation = AnimatorSet().apply {
+                        playTogether(closeAnimators)
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animator: Animator) {
+                                if (dialog.isShowing) dialog.dismiss()
+                                resetAppIconMorph(source)
+                                after?.invoke()
+                            }
+                        })
+                        start()
+                    }
+                }
+            }
+        }
     }
 
-    private fun appCard(info: PackageInfo, dialog: Dialog): View {
+    private fun appCard(
+        info: PackageInfo,
+        dismiss: (after: (() -> Unit)?) -> Unit
+    ): MaterialCardView {
         val packageName = info.packageName
         val mode = InstrumentationSettings.getModeForPackage(packageName)
         val appLabel = runCatching {
@@ -332,8 +513,7 @@ class FridaBoxActivity : AppCompatActivity() {
             setPadding(0, dp(16), 0, 0)
         }
         actions.addView(primaryButton(getString(R.string.fb_launch)) {
-            dialog.dismiss()
-            launchConfigured(packageName)
+            dismiss { launchConfigured(packageName) }
         }, LinearLayout.LayoutParams(0, dp(50), 1f))
         actions.addView(space(dp(10), 1))
         actions.addView(outlineButton(getString(R.string.fb_more)) { anchor ->
@@ -341,6 +521,81 @@ class FridaBoxActivity : AppCompatActivity() {
         }, LinearLayout.LayoutParams(0, dp(50), 0.56f))
         body.addView(actions)
         return card
+    }
+
+    private fun animateAppIconMorph(source: View, opening: Boolean) {
+        source.animate().cancel()
+        val squash = ObjectAnimator.ofPropertyValuesHolder(
+            source,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, source.scaleX, if (opening) 1.08f else 0.94f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, source.scaleY, if (opening) 0.88f else 1.06f)
+        ).apply { duration = 70L }
+        val stretch = ObjectAnimator.ofPropertyValuesHolder(
+            source,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, if (opening) 1.08f else 0.94f, if (opening) 0.94f else 1.05f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, if (opening) 0.88f else 1.06f, if (opening) 1.06f else 0.95f),
+            PropertyValuesHolder.ofFloat(View.ALPHA, source.alpha, if (opening) 0.38f else 0.84f)
+        ).apply { duration = 85L }
+        val settle = ObjectAnimator.ofPropertyValuesHolder(
+            source,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, if (opening) 0.94f else 1.05f, if (opening) 0.96f else 1f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, if (opening) 1.06f else 0.95f, if (opening) 0.96f else 1f),
+            PropertyValuesHolder.ofFloat(View.ALPHA, if (opening) 0.38f else 0.84f, if (opening) 0.22f else 1f)
+        ).apply {
+            duration = 145L
+            interpolator = OvershootInterpolator(0.9f)
+        }
+        AnimatorSet().apply {
+            playSequentially(squash, stretch, settle)
+            start()
+        }
+    }
+
+    private fun resetAppIconMorph(source: View) {
+        source.animate().cancel()
+        source.scaleX = 1f
+        source.scaleY = 1f
+        source.rotation = 0f
+        source.alpha = 1f
+    }
+
+    private fun addAppLaunchRipple(
+        root: FrameLayout,
+        panel: View,
+        centerX: Float,
+        centerY: Float,
+        delay: Long
+    ) {
+        val size = dp(72)
+        val ripple = View(this).apply {
+            alpha = 0f
+            scaleX = 0.28f
+            scaleY = 0.28f
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(2), color(R.color.fb_glass_highlight))
+            }
+        }
+        root.addView(ripple, root.indexOfChild(panel).coerceAtLeast(1), FrameLayout.LayoutParams(size, size).apply {
+            leftMargin = (centerX - size / 2f).toInt()
+            topMargin = (centerY - size / 2f).toInt()
+        })
+        AnimatorSet().apply {
+            playTogether(
+                ObjectAnimator.ofFloat(ripple, View.ALPHA, 0f, 0.58f, 0f),
+                ObjectAnimator.ofFloat(ripple, View.SCALE_X, 0.28f, 1.32f),
+                ObjectAnimator.ofFloat(ripple, View.SCALE_Y, 0.28f, 1.32f)
+            )
+            startDelay = delay
+            duration = 410L
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    (ripple.parent as? ViewGroup)?.removeView(ripple)
+                }
+            })
+            start()
+        }
     }
 
     private fun renderModeInfo(container: LinearLayout, packageName: String, mode: String) {
@@ -651,35 +906,270 @@ class FridaBoxActivity : AppCompatActivity() {
     }
 
     private fun showImportActions() {
-        val popup = PopupWindow(this).apply {
-            width = dp(232)
-            height = ViewGroup.LayoutParams.WRAP_CONTENT
+        if (importMenuOverlay != null) {
+            dismissImportActions()
+            return
+        }
+
+        val root = binding.root
+        val fab = binding.importFabIcon
+        if (fab.width == 0 || fab.height == 0 || root.width == 0) {
+            fab.post { if (!isFinishing) showImportActions() }
+            return
+        }
+
+        importMenuClosing = false
+        val overlay = FrameLayout(this).apply {
+            isClickable = true
             isFocusable = true
-            isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        importMenuOverlay = overlay
+        root.addView(
+            overlay,
+            root.indexOfChild(fab).coerceAtLeast(0),
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        val scrim = View(this).apply {
+            alpha = 0f
+            setBackgroundColor(Color.BLACK)
+            setOnClickListener { dismissImportActions() }
+        }
+        overlay.addView(scrim, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+
+        val actionWidth = dp(232)
+        val actionHeight = dp(56)
+        val actionGap = dp(10)
+        val rightMargin = (root.width - fab.right).coerceAtLeast(dp(12))
+        val entries = listOf(
+            Triple(getString(R.string.fb_import_from_apps), R.drawable.ic_fb_apps) {
+                showInstalledAppsBrowser()
+            },
+            Triple(getString(R.string.fb_import_from_file), R.drawable.ic_fb_file) {
+                openApkPicker()
+            }
+        )
+        val actions = entries.mapIndexed { index, entry ->
+            val button = importBubbleActionButton(entry.first, entry.second) {
+                dismissImportActions(after = entry.third)
+            }
+            val distanceFromFab = entries.size - index
+            val desiredTop = fab.top - distanceFromFab * (actionHeight + actionGap)
+            overlay.addView(button, FrameLayout.LayoutParams(actionWidth, actionHeight, Gravity.TOP or Gravity.END).apply {
+                topMargin = desiredTop.coerceAtLeast(dp(12))
+                this.rightMargin = rightMargin
+            })
+            button.apply {
+                alpha = 0f
+                scaleX = 0.28f
+                scaleY = 0.28f
+                translationX = dp(16).toFloat()
+                translationY = dp(42).toFloat()
+                pivotX = actionWidth.toFloat()
+                pivotY = actionHeight.toFloat()
+            }
+        }
+        overlay.tag = ImportBubbleViews(scrim, actions)
+
+        addImportRipple(overlay, fab, delay = 0L)
+        addImportRipple(overlay, fab, delay = 90L)
+
+        val animationToken = ++importMenuAnimationGeneration
+        importMenuAnimator?.cancel()
+        val animators = mutableListOf<Animator>(
+            importFabMorph(open = true),
+            ObjectAnimator.ofFloat(scrim, View.ALPHA, 0f, 0.18f).apply { duration = 240L }
+        )
+        actions.forEachIndexed { index, button ->
+            animators += ObjectAnimator.ofPropertyValuesHolder(
+                button,
+                PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 1f),
+                PropertyValuesHolder.ofFloat(View.SCALE_X, 0.28f, 1f),
+                PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.28f, 1f),
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_X, dp(16).toFloat(), 0f),
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, dp(42).toFloat(), 0f)
+            ).apply {
+                duration = 390L
+                startDelay = if (index == actions.lastIndex) 75L else 135L
+                interpolator = OvershootInterpolator(1.35f)
+            }
+        }
+        importMenuAnimator = AnimatorSet().apply {
+            playTogether(animators)
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (animationToken == importMenuAnimationGeneration) importMenuAnimator = null
+                }
+            })
+            start()
+        }
+        fab.announceForAccessibility(getString(R.string.fb_import))
+    }
+
+    private fun importBubbleActionButton(
+        label: String,
+        iconResource: Int,
+        action: () -> Unit
+    ): MaterialButton {
+        return importActionButton(label, iconResource, action).apply {
+            cornerRadius = dp(28)
+            backgroundTintList = ColorStateList.valueOf(color(R.color.fb_glass_surface_strong))
+            strokeColor = ColorStateList.valueOf(color(R.color.fb_glass_outline))
+            strokeWidth = dp(1)
             elevation = dp(12).toFloat()
+            setPadding(dp(20), 0, dp(20), 0)
         }
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), dp(10), dp(10), dp(2))
-            background = ContextCompat.getDrawable(this@FridaBoxActivity, R.drawable.bg_glass_popup)
+    }
+
+    private fun dismissImportActions(
+        after: (() -> Unit)? = null,
+        immediate: Boolean = false
+    ) {
+        val overlay = importMenuOverlay ?: run {
+            after?.invoke()
+            return
         }
-        panel.addView(importActionButton(
-            getString(R.string.fb_import_from_apps),
-            R.drawable.ic_fb_apps
-        ) {
-            popup.dismiss()
-            showInstalledAppsBrowser()
+        if (importMenuClosing && !immediate) return
+        importMenuClosing = true
+        val animationToken = ++importMenuAnimationGeneration
+        importMenuAnimator?.cancel()
+        importMenuAnimator = null
+
+        val fab = binding.importFabIcon
+        val views = overlay.tag as? ImportBubbleViews
+        if (immediate || views == null || !overlay.isAttachedToWindow) {
+            (overlay.parent as? ViewGroup)?.removeView(overlay)
+            importMenuOverlay = null
+            importMenuClosing = false
+            resetImportFab()
+            after?.invoke()
+            return
+        }
+
+        val animators = mutableListOf<Animator>(
+            importFabMorph(open = false),
+            ObjectAnimator.ofFloat(views.scrim, View.ALPHA, views.scrim.alpha, 0f).apply {
+                duration = 180L
+            }
+        )
+        views.actions.asReversed().forEachIndexed { index, button ->
+            animators += ObjectAnimator.ofPropertyValuesHolder(
+                button,
+                PropertyValuesHolder.ofFloat(View.ALPHA, button.alpha, 0f),
+                PropertyValuesHolder.ofFloat(View.SCALE_X, button.scaleX, 0.35f),
+                PropertyValuesHolder.ofFloat(View.SCALE_Y, button.scaleY, 0.35f),
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_X, button.translationX, dp(14).toFloat()),
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, button.translationY, dp(36).toFloat())
+            ).apply {
+                duration = 190L
+                startDelay = index * 28L
+                interpolator = AccelerateInterpolator(1.4f)
+            }
+        }
+        importMenuAnimator = AnimatorSet().apply {
+            playTogether(animators)
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (animationToken != importMenuAnimationGeneration) return
+                    (overlay.parent as? ViewGroup)?.removeView(overlay)
+                    importMenuOverlay = null
+                    importMenuAnimator = null
+                    importMenuClosing = false
+                    resetImportFab()
+                    after?.invoke()
+                }
+            })
+            start()
+        }
+    }
+
+    private fun importFabMorph(open: Boolean): AnimatorSet {
+        val fab = binding.importFabIcon
+        val squash = ObjectAnimator.ofPropertyValuesHolder(
+            fab,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, fab.scaleX, if (open) 1.22f else 0.82f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, fab.scaleY, if (open) 0.72f else 1.18f),
+            PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, fab.translationY, dp(4).toFloat())
+        ).apply { duration = 95L }
+        val stretch = ObjectAnimator.ofPropertyValuesHolder(
+            fab,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, if (open) 1.22f else 0.82f, if (open) 0.82f else 1.18f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, if (open) 0.72f else 1.18f, if (open) 1.20f else 0.78f),
+            PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, dp(4).toFloat(), -dp(3).toFloat()),
+            PropertyValuesHolder.ofFloat(View.ROTATION, fab.rotation, if (open) 145f else 35f)
+        ).apply {
+            duration = 115L
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationStart(animation: Animator) {
+                    fab.setImageResource(if (open) R.drawable.ic_fb_close else R.drawable.ic_fb_import)
+                    fab.contentDescription = getString(if (open) R.string.fb_close else R.string.fb_import)
+                }
+            })
+        }
+        val settle = ObjectAnimator.ofPropertyValuesHolder(
+            fab,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, if (open) 0.82f else 1.18f, 1f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, if (open) 1.20f else 0.78f, 1f),
+            PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, -dp(3).toFloat(), 0f),
+            PropertyValuesHolder.ofFloat(View.ROTATION, if (open) 145f else 35f, if (open) 180f else 0f)
+        ).apply {
+            duration = 210L
+            interpolator = OvershootInterpolator(1.55f)
+        }
+        return AnimatorSet().apply { playSequentially(squash, stretch, settle) }
+    }
+
+    private fun addImportRipple(overlay: FrameLayout, fab: View, delay: Long) {
+        val rippleSize = dp(78)
+        val ripple = View(this).apply {
+            alpha = 0f
+            scaleX = 0.35f
+            scaleY = 0.35f
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(2), color(R.color.fb_glass_highlight))
+            }
+        }
+        overlay.addView(ripple, FrameLayout.LayoutParams(rippleSize, rippleSize).apply {
+            leftMargin = fab.left + (fab.width - rippleSize) / 2
+            topMargin = fab.top + (fab.height - rippleSize) / 2
         })
-        panel.addView(importActionButton(
-            getString(R.string.fb_import_from_file),
-            R.drawable.ic_fb_file
-        ) {
-            popup.dismiss()
-            openApkPicker()
-        })
-        popup.contentView = panel
-        popup.showAtLocation(binding.root, Gravity.BOTTOM or Gravity.END, dp(18), dp(156))
+        AnimatorSet().apply {
+            playTogether(
+                ObjectAnimator.ofFloat(ripple, View.ALPHA, 0f, 0.72f, 0f),
+                ObjectAnimator.ofFloat(ripple, View.SCALE_X, 0.35f, 1.55f),
+                ObjectAnimator.ofFloat(ripple, View.SCALE_Y, 0.35f, 1.55f)
+            )
+            startDelay = delay
+            duration = 520L
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    (ripple.parent as? ViewGroup)?.removeView(ripple)
+                }
+            })
+            start()
+        }
+    }
+
+    private fun resetImportFab() {
+        if (!::binding.isInitialized) return
+        binding.importFabIcon.apply {
+            animate().cancel()
+            setImageResource(R.drawable.ic_fb_import)
+            contentDescription = getString(R.string.fb_import)
+            scaleX = 1f
+            scaleY = 1f
+            translationY = 0f
+            rotation = 0f
+        }
     }
 
     private fun importActionButton(label: String, iconResource: Int, action: () -> Unit): MaterialButton {
@@ -1548,6 +2038,7 @@ class FridaBoxActivity : AppCompatActivity() {
     }
 
     private fun resetScreen(navId: Int, showImport: Boolean): Int {
+        dismissImportActions(immediate = true)
         screenGeneration += 1
         binding.content.removeAllViews()
         binding.contentScroll.scrollTo(0, 0)
