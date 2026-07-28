@@ -27,3 +27,5 @@ __pycache__/
 *.pyc
 node_modules/
 .npm-cache/
+/release-secrets/
+/.release-work/

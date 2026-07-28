@@ -44,7 +44,7 @@ public final class ApkInspector {
             }
         }
         if (!inspectedAny) throw new IOException("No APK files were provided");
-        boolean supported = !hasNativeLibraries || abis.contains("arm64-v8a");
+        boolean supported = !hasNativeLibraries || !Collections.disjoint(abis, SUPPORTED_ABIS);
         return new Result(hasNativeLibraries, supported, abis);
     }
 
@@ -61,7 +61,11 @@ public final class ApkInspector {
 
         public String description() {
             if (!hasNativeLibraries) return "Pure Java/Kotlin (accepted)";
-            return supported ? "ARM64 supported: " + abis : "Rejected; no arm64-v8a: " + abis;
+            return supported ? "Supported ABI: " + abis : "Rejected; unsupported ABI: " + abis;
         }
     }
+
+    private static final Set<String> SUPPORTED_ABIS = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
+            "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+    )));
 }

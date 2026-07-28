@@ -31,10 +31,17 @@ public class ApkInspectorTest {
     }
 
     @Test
-    public void thirtyTwoBitOnlyApkIsRejected() throws Exception {
+    public void thirtyTwoBitOnlyApkIsAccepted() throws Exception {
         ApkInspector.Result result = ApkInspector.inspect(apkWith("lib/armeabi-v7a/libsample.so"));
         assertTrue(result.hasNativeLibraries);
-        assertFalse(result.supported);
+        assertTrue(result.supported);
+    }
+
+    @Test
+    public void x86ApkIsAccepted() throws Exception {
+        ApkInspector.Result result = ApkInspector.inspect(apkWith("lib/x86/libsample.so"));
+        assertTrue(result.hasNativeLibraries);
+        assertTrue(result.supported);
     }
 
     @Test

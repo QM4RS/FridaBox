@@ -32,7 +32,7 @@ android {
                 enable true
                 reset()
                 
-                include "arm64-v8a"
+                include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
                 universalApk false
             }
         }
@@ -106,12 +106,17 @@ tasks.matching { it.name.toLowerCase().contains("debug") && it.name.toLowerCase(
 tasks.register("verifyDebugApkHasNoGadget") {
     dependsOn("assembleDebug")
     doLast {
-        def apk = fileTree("$buildDir/outputs/apk/debug").matching { include("*.apk") }.singleFile
-        def entries = zipTree(apk).files.findAll {
-            it.name.toLowerCase().contains("gadget") && it.name.toLowerCase().endsWith(".so")
+        def apks = fileTree("$buildDir/outputs/apk/debug").matching { include("*.apk") }.files
+        if (apks.isEmpty()) {
+            throw new GradleException("No debug APKs were produced")
         }
-        if (!entries.isEmpty()) {
-            throw new GradleException("APK must not bundle Frida Gadget: ${entries*.name}")
+        apks.each { apk ->
+            def entries = zipTree(apk).files.findAll {
+                it.name.toLowerCase().contains("gadget") && it.name.toLowerCase().endsWith(".so")
+            }
+            if (!entries.isEmpty()) {
+                throw new GradleException("${apk.name} must not bundle Frida Gadget: ${entries*.name}")
+            }
         }
     }
 }

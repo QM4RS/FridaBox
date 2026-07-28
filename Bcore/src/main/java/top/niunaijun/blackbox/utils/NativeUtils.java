@@ -25,8 +25,10 @@ public class NativeUtils {
             nativeLibDir.mkdirs();
         }
         try (ZipFile zipfile = new ZipFile(apk.getAbsolutePath())) {
-            if (findAndCopyNativeLib(zipfile, Build.CPU_ABI, nativeLibDir)) {
-                return;
+            for (String abi : Build.SUPPORTED_ABIS) {
+                if (findAndCopyNativeLib(zipfile, abi, nativeLibDir)) {
+                    return;
+                }
             }
 
             findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);

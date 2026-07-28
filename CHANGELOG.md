@@ -5,6 +5,21 @@ versioning for its public releases.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-07-28
+
+### Added
+
+- Separate release APKs for `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64`.
+- In-app APK inspection now accepts supported 32-bit ARM and x86 guest ABIs.
+- Downloadable official Frida Gadget management, including ABI validation and
+  on-device or computer-controlled runtime selection.
+- A liquid-glass launcher, downloadable Gadget screen, and guest log overlay.
+
+### Changed
+
+- Updated application iconography, navigation, runtime visibility, and release
+  dependency set.
+
 ### Documentation
 
 - Added the public research roadmap for Frida visibility, `/proc`/maps

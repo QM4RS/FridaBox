@@ -51,7 +51,8 @@ Build and test:
 
 The debug host build depends on the sample build and copies its byte-identical
 APK into generated debug assets. Generated sample APKs are not source-controlled.
-The final host output is under `app/build/outputs/apk/debug/` and is ARM64-only.
+The final host outputs are under `app/build/outputs/apk/debug/` for `armeabi-v7a`,
+`arm64-v8a`, `x86`, and `x86_64`.
 `verifyDebugApkHasNoGadget` inspects the assembled APK and fails if a Gadget
 library or configuration is accidentally bundled again.
 
@@ -82,5 +83,5 @@ If only some signing variables are present, configuration fails instead of
 producing an ambiguously signed artifact. Keep the keystore and credentials
 outside the repository and CI logs.
 
-The ARM64 release output is written to
-`app/build/outputs/apk/release/FridaBox_4.0.0_arm64-v8a-release.apk`.
+Release outputs are written to `app/build/outputs/apk/release/`, one APK each for
+`armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64`.

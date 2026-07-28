@@ -43,10 +43,14 @@ public class AbiUtils {
                 String name = zipEntry.getName();
                 if (name.startsWith("lib/arm64-v8a")) {
                     mLibs.add("arm64-v8a");
-                } else if (name.startsWith("lib/armeabi")) {
-                    mLibs.add("armeabi");
                 } else if (name.startsWith("lib/armeabi-v7a")) {
                     mLibs.add("armeabi-v7a");
+                } else if (name.startsWith("lib/armeabi")) {
+                    mLibs.add("armeabi");
+                } else if (name.startsWith("lib/x86_64")) {
+                    mLibs.add("x86_64");
+                } else if (name.startsWith("lib/x86")) {
+                    mLibs.add("x86");
                 }
             }
         } catch (Exception e) {
@@ -57,11 +61,11 @@ public class AbiUtils {
     }
 
     public boolean is64Bit() {
-        return mLibs.contains("arm64-v8a");
+        return mLibs.contains("arm64-v8a") || mLibs.contains("x86_64");
     }
 
     public boolean is32Bit() {
-        return mLibs.contains("armeabi") || mLibs.contains("armeabi-v7a");
+        return mLibs.contains("armeabi") || mLibs.contains("armeabi-v7a") || mLibs.contains("x86");
     }
 
     public boolean isEmptyAib() {
