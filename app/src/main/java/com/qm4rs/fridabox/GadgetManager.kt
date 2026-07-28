@@ -1,11 +1,11 @@
 package com.qm4rs.fridabox
 
 import android.content.Context
-import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
 import org.tukaani.xz.XZInputStream
 import top.niunaijun.blackbox.instrumentation.InstrumentationSettings
+import top.niunaijun.blackbox.utils.ProcessAbi
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -42,8 +42,10 @@ data class GadgetAbi(val androidName: String, val releaseName: String) {
             GadgetAbi("x86", "x86")
         )
 
-        fun detect(): GadgetAbi? = Build.SUPPORTED_ABIS
-            .firstNotNullOfOrNull { deviceAbi -> supported.firstOrNull { it.androidName == deviceAbi } }
+        fun detect(context: Context): GadgetAbi? {
+            val processAbi = ProcessAbi.detect(context) ?: return null
+            return supported.firstOrNull { it.androidName == processAbi }
+        }
     }
 }
 
@@ -85,7 +87,7 @@ class GadgetManager(private val context: Context) {
         }
     }
 
-    fun detectedAbi(): GadgetAbi? = GadgetAbi.detect()
+    fun detectedAbi(): GadgetAbi? = GadgetAbi.detect(context)
 
     fun loadCatalog(source: GadgetSource, abi: GadgetAbi, page: Int): GadgetCatalog {
         val cache = File(cacheRoot, "${source.id}-${abi.androidName}-$page.json")

@@ -54,6 +54,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackbox.instrumentation.InstrumentationSettings
+import top.niunaijun.blackbox.utils.ProcessAbi
 import com.qm4rs.fridabox.databinding.ActivityFridaboxBinding
 import java.io.File
 import java.io.FileOutputStream
@@ -1350,7 +1351,10 @@ class FridaBoxActivity : AppCompatActivity() {
                 require(apkFiles.isNotEmpty() && apkFiles.all { it.isFile }) {
                     "Installed APK files are unavailable"
                 }
-                val abi = ApkInspector.inspect(apkFiles)
+                val processAbi = requireNotNull(ProcessAbi.detect(this)) {
+                    "Unable to determine the FridaBox process ABI"
+                }
+                val abi = ApkInspector.inspect(apkFiles, processAbi)
                 if (!abi.supported) error("Unsupported native ABI: ${abi.description()}")
                 val originalHash = installedPackageSha256(apkFiles)
                 val install = BlackBoxCore.get().installPackageAsUser(packageName, 0)
@@ -1411,7 +1415,10 @@ class FridaBoxActivity : AppCompatActivity() {
                 val archiveInfo = packageManager.getPackageArchiveInfo(temporary.absolutePath, PackageManager.GET_META_DATA)
                     ?: error("Android could not parse this APK")
                 if (!archiveInfo.splitNames.isNullOrEmpty()) error("Split-only APKs are not supported")
-                val abi = ApkInspector.inspect(temporary)
+                val processAbi = requireNotNull(ProcessAbi.detect(this)) {
+                    "Unable to determine the FridaBox process ABI"
+                }
+                val abi = ApkInspector.inspect(listOf(temporary), processAbi)
                 if (!abi.supported) error("Unsupported native ABI: ${abi.description()}")
                 val safePackage = safePackageName(archiveInfo.packageName)
                 val stored = File(directory, "$safePackage-${originalHash.take(12)}.apk")

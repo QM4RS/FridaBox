@@ -5,6 +5,17 @@ versioning for its public releases.
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-07-28
+
+### Fixed
+
+- Select downloaded Frida Gadgets by the actual host process ABI instead of the
+  device's preferred ABI, preventing 64-bit Gadgets from being selected by
+  32-bit ARM or x86 release APKs.
+- Require guest native libraries to match the exact FridaBox process ABI and
+  extract only that ABI, preventing cross-architecture guest import failures.
+- Report the correct x86_64 process bitness on Android 5.0 and 5.1.
+
 ## [4.1.0] - 2026-07-28
 
 ### Added

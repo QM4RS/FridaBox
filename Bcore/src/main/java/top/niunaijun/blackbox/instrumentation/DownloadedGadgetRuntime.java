@@ -1,7 +1,6 @@
 package top.niunaijun.blackbox.instrumentation;
 
 import android.content.Context;
-import android.os.Build;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -11,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import top.niunaijun.blackbox.BlackBoxCore;
+import top.niunaijun.blackbox.utils.ProcessAbi;
 
 /** Resolves a selected, downloaded Gadget and prepares per-guest runtime copies. */
 final class DownloadedGadgetRuntime {
@@ -48,8 +48,8 @@ final class DownloadedGadgetRuntime {
         if (!isInside(root, selected) || !selected.isFile()) {
             throw new IOException("The selected Frida Gadget is missing or outside private storage");
         }
-        if (!supportsAbi(selectedAbi)) {
-            throw new IOException("The selected Frida Gadget ABI is not supported by this device");
+        if (!supportsAbi(context, selectedAbi)) {
+            throw new IOException("The selected Frida Gadget ABI does not match this process");
         }
         validateElf(selected, selectedAbi);
         return selected;
@@ -108,12 +108,8 @@ final class DownloadedGadgetRuntime {
         return -1;
     }
 
-    private static boolean supportsAbi(String abi) {
-        if (abi == null) return false;
-        for (String supported : Build.SUPPORTED_ABIS) {
-            if (abi.equals(supported)) return true;
-        }
-        return false;
+    private static boolean supportsAbi(Context context, String abi) {
+        return abi != null && abi.equals(ProcessAbi.detect(context));
     }
 
     private static boolean isInside(File root, File child) {

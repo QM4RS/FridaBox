@@ -26,11 +26,7 @@ public class AbiUtils {
             return true;
         }
 
-        if (BlackBoxCore.is64Bit()) {
-            return abiUtils.is64Bit();
-        } else {
-            return abiUtils.is32Bit();
-        }
+        return abiUtils.supports(ProcessAbi.detect(BlackBoxCore.getContext()));
     }
 
     public AbiUtils(File apkFile) {
@@ -70,5 +66,12 @@ public class AbiUtils {
 
     public boolean isEmptyAib() {
         return mLibs.isEmpty();
+    }
+
+    public boolean supports(String processAbi) {
+        if ("armeabi-v7a".equals(processAbi)) {
+            return mLibs.contains("armeabi-v7a") || mLibs.contains("armeabi");
+        }
+        return processAbi != null && mLibs.contains(processAbi);
     }
 }

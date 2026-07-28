@@ -68,6 +68,7 @@ import top.niunaijun.blackbox.utils.StackTraceFilter;
 import top.niunaijun.blackbox.utils.SocialMediaAppCrashPrevention;
 import top.niunaijun.blackbox.utils.DexCrashPrevention;
 import top.niunaijun.blackbox.utils.NativeCrashPrevention;
+import top.niunaijun.blackbox.utils.ProcessAbi;
 import top.niunaijun.blackbox.utils.CrashMonitor;
 import top.niunaijun.blackbox.utils.StoragePermissionHelper;
 import top.niunaijun.blackbox.utils.LogSender;
@@ -1463,11 +1464,9 @@ public class BlackBoxCore extends ClientConfiguration {
     }
 
     public static boolean is64Bit() {
-        if (BuildCompat.isM()) {
-            return Process.is64Bit();
-        } else {
-            return Build.CPU_ABI.equals("arm64-v8a");
-        }
+        String processAbi = ProcessAbi.detect(getContext());
+        return processAbi != null ? ProcessAbi.is64Bit(processAbi)
+                : BuildCompat.isM() && Process.is64Bit();
     }
 
     private void initNotificationManager() {

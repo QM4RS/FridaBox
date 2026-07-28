@@ -18,28 +18,31 @@ public class ApkInspectorTest {
     @Test
     public void pureJavaApkIsAccepted() throws Exception {
         File apk = apkWith("classes.dex");
-        ApkInspector.Result result = ApkInspector.inspect(apk);
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(apk), "x86");
         assertFalse(result.hasNativeLibraries);
         assertTrue(result.supported);
     }
 
     @Test
     public void arm64ApkIsAccepted() throws Exception {
-        ApkInspector.Result result = ApkInspector.inspect(apkWith("lib/arm64-v8a/libsample.so"));
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(
+                apkWith("lib/arm64-v8a/libsample.so")), "arm64-v8a");
         assertTrue(result.hasNativeLibraries);
         assertTrue(result.supported);
     }
 
     @Test
     public void thirtyTwoBitOnlyApkIsAccepted() throws Exception {
-        ApkInspector.Result result = ApkInspector.inspect(apkWith("lib/armeabi-v7a/libsample.so"));
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(
+                apkWith("lib/armeabi-v7a/libsample.so")), "armeabi-v7a");
         assertTrue(result.hasNativeLibraries);
         assertTrue(result.supported);
     }
 
     @Test
     public void x86ApkIsAccepted() throws Exception {
-        ApkInspector.Result result = ApkInspector.inspect(apkWith("lib/x86/libsample.so"));
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(
+                apkWith("lib/x86/libsample.so")), "x86");
         assertTrue(result.hasNativeLibraries);
         assertTrue(result.supported);
     }
@@ -48,9 +51,25 @@ public class ApkInspectorTest {
     public void splitNativeLibrariesAreInspectedTogether() throws Exception {
         File base = apkWith("classes.dex");
         File arm64Split = apkWith("lib/arm64-v8a/libsample.so");
-        ApkInspector.Result result = ApkInspector.inspect(base, arm64Split);
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Arrays.asList(base, arm64Split), "arm64-v8a");
         assertTrue(result.hasNativeLibraries);
         assertTrue(result.supported);
+    }
+
+    @Test
+    public void armGuestIsRejectedByX86Process() throws Exception {
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(
+                apkWith("lib/armeabi-v7a/libsample.so")), "x86");
+        assertTrue(result.hasNativeLibraries);
+        assertFalse(result.supported);
+    }
+
+    @Test
+    public void thirtyTwoBitGuestIsRejectedBySixtyFourBitProcessOfSameFamily() throws Exception {
+        ApkInspector.Result result = ApkInspector.inspect(java.util.Collections.singletonList(
+                apkWith("lib/armeabi-v7a/libsample.so")), "arm64-v8a");
+        assertTrue(result.hasNativeLibraries);
+        assertFalse(result.supported);
     }
 
     private File apkWith(String entry) throws Exception {

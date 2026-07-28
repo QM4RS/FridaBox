@@ -1,6 +1,5 @@
 package top.niunaijun.blackbox.utils;
 
-import android.os.Build;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -14,6 +13,7 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import top.niunaijun.blackbox.BlackBoxCore;
 
 
 public class NativeUtils {
@@ -25,13 +25,13 @@ public class NativeUtils {
             nativeLibDir.mkdirs();
         }
         try (ZipFile zipfile = new ZipFile(apk.getAbsolutePath())) {
-            for (String abi : Build.SUPPORTED_ABIS) {
-                if (findAndCopyNativeLib(zipfile, abi, nativeLibDir)) {
-                    return;
-                }
+            String processAbi = ProcessAbi.detect(BlackBoxCore.getContext());
+            if (processAbi != null && findAndCopyNativeLib(zipfile, processAbi, nativeLibDir)) {
+                return;
             }
-
-            findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            if ("armeabi-v7a".equals(processAbi)) {
+                findAndCopyNativeLib(zipfile, "armeabi", nativeLibDir);
+            }
         } finally {
             Log.d(TAG, "Done! +" + (System.currentTimeMillis() - startTime) + "ms");
         }
