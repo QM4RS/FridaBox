@@ -187,7 +187,7 @@ dependencies {
     implementation libs.material
     implementation libs.constraintlayout
     implementation libs.core.ktx
-    implementation "org.tukaani:xz:1.10"
+    implementation "org.tukaani:xz:1.12"
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
