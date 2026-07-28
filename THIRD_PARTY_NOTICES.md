@@ -69,15 +69,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Frida Java bridge and agent compiler
+## Frida Java and IL2CPP runtime bridges and agent compiler
 
 The compiled JavaScript agents under `scripts/dist/` include
 `frida-java-bridge` 7.0.13. They are built with `frida-compile` 19.0.5.
+FridaBox also packages offline runtime-bridge bundles for Java 7.0.11 through
+7.0.13 and `frida-il2cpp-bridge` 0.12.2 through 0.13.1. These optional bundles
+are only composed into a private on-device agent when the user enables them.
 
 - Java bridge origin: `https://github.com/frida/frida-java-bridge`
+- IL2CPP bridge origin: `https://github.com/vfsfitvnm/frida-il2cpp-bridge`
 - Compiler origin: `https://github.com/frida/frida-compile`
-- License: LGPL-2.0 with the wxWindows Library Licence 3.1 exception, as
-  declared by the respective official packages.
+- Java bridge and compiler license: LGPL-2.0 with the wxWindows Library Licence
+  3.1 exception, as declared by the respective official packages.
+- IL2CPP bridge license: MIT, as declared by its package and repository.
 
 The authoritative licence text and exception are the same wxWindows Library
 Licence described above. Exact package versions and dependency integrity hashes

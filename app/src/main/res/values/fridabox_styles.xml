@@ -26,4 +26,23 @@
         <item name="colorOnSurface">@color/fb_text_primary</item>
         <item name="colorPrimary">@color/fb_primary</item>
     </style>
+
+    <style name="Widget.FridaBox.Navigation.ActiveIndicator" parent="">
+        <item name="android:width">44dp</item>
+        <item name="android:height">32dp</item>
+        <item name="marginHorizontal">0dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.FridaBox.NavigationPill</item>
+        <item name="android:color">@color/fb_nav_indicator</item>
+    </style>
+
+    <style name="ShapeAppearance.FridaBox.NavigationPill" parent="ShapeAppearance.MaterialComponents.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <style name="TextAppearance.FridaBox.Navigation.Label" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
 </resources>

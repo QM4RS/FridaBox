@@ -6,8 +6,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
 import android.app.Dialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageInfo
@@ -23,11 +21,15 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.InputType
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.GridLayout
@@ -36,7 +38,6 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.Space
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -54,6 +55,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackbox.instrumentation.InstrumentationSettings
+import top.niunaijun.blackbox.instrumentation.RuntimeBridgeCatalog
 import top.niunaijun.blackbox.utils.ProcessAbi
 import com.qm4rs.fridabox.databinding.ActivityFridaboxBinding
 import java.io.File
@@ -64,7 +66,7 @@ import java.util.concurrent.Executors
 
 /** Product workspace for importing, configuring, and launching FridaBox guests. */
 class FridaBoxActivity : AppCompatActivity() {
-    private enum class Screen { WORKSPACE, GADGETS, RUNTIME, SETTINGS }
+    private enum class Screen { WORKSPACE, GADGETS, SETTINGS }
 
     private data class ImportBubbleViews(
         val scrim: View,
@@ -107,6 +109,10 @@ class FridaBoxActivity : AppCompatActivity() {
         binding = ActivityFridaboxBinding.inflate(layoutInflater)
         setContentView(binding.root)
         pendingScriptPackage = savedInstanceState?.getString("pending_script_package")
+        settings.edit()
+            .remove(InstrumentationSettings.KEY_ENABLED)
+            .remove(InstrumentationSettings.KEY_ADVANCED_LOGS)
+            .apply()
 
         binding.importFabIcon.setOnClickListener { showImportActions() }
         binding.bottomNavigation.setOnItemSelectedListener { item ->
@@ -114,11 +120,15 @@ class FridaBoxActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_workspace -> showWorkspace()
                 R.id.nav_gadgets -> showGadgets()
-                R.id.nav_runtime -> showRuntime()
                 R.id.nav_settings -> showSettings()
                 else -> return@setOnItemSelectedListener false
             }
+            animateNavigationSelection(item.itemId)
+            animateContentIn()
             true
+        }
+        binding.bottomNavigation.setOnItemReselectedListener { item ->
+            animateNavigationSelection(item.itemId)
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -704,7 +714,6 @@ class FridaBoxActivity : AppCompatActivity() {
                 setLoading(false)
                 result.onSuccess { launched ->
                     if (!launched) toast("This guest has no launchable activity")
-                    else if (mode == InstrumentationSettings.MODE_COMPUTER) showRuntime(packageName)
                 }.onFailure { toast("Launch failed: ${it.message}") }
             }
         }
@@ -802,10 +811,6 @@ class FridaBoxActivity : AppCompatActivity() {
         panel.addView(menuActionButton(getString(R.string.fb_details), R.drawable.ic_fb_details) {
             popup.dismiss()
             showAppDetails(info, appLabel)
-        })
-        panel.addView(menuActionButton(getString(R.string.fb_runtime_details), R.drawable.ic_fb_runtime) {
-            popup.dismiss()
-            showRuntime(info.packageName)
         })
         panel.addView(menuActionButton(getString(R.string.fb_clear_data), R.drawable.ic_fb_clear) {
             popup.dismiss()
@@ -1451,9 +1456,10 @@ class FridaBoxActivity : AppCompatActivity() {
         }
     }
 
-    private fun showGadgets() {
+    private fun showGadgets(preserveScroll: Boolean = false) {
+        val previousScrollY = binding.contentScroll.scrollY
         screen = Screen.GADGETS
-        resetScreen(R.id.nav_gadgets, showImport = false)
+        resetScreen(R.id.nav_gadgets, showImport = false, resetScroll = !preserveScroll)
         binding.toolbar.title = getString(R.string.fb_gadgets_title)
 
         val abi = gadgetManager.detectedAbi()
@@ -1497,6 +1503,10 @@ class FridaBoxActivity : AppCompatActivity() {
             }
         })
 
+        if (selected != null && RuntimeBridgeCatalog.supportsRuntimeBridges(selected.version)) {
+            binding.content.addView(runtimeBridgeControls(selected.version))
+        }
+
         val installed = gadgetManager.installed()
         if (installed.isNotEmpty()) {
             binding.content.addView(labelText(
@@ -1506,6 +1516,106 @@ class FridaBoxActivity : AppCompatActivity() {
                 binding.content.addView(installedGadgetRow(gadget, selected?.identity == gadget.identity))
             }
         }
+        if (preserveScroll) restoreScrollBeforeNextDraw(previousScrollY)
+    }
+
+    private fun runtimeBridgeControls(gadgetVersion: String): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(labelText(
+                getString(R.string.fb_runtime_bridges), R.color.fb_text_secondary, 12f, false
+            ).apply { setPadding(0, 0, 0, dp(6)) })
+            addView(labelText(
+                getString(R.string.fb_runtime_bridges_body, gadgetVersion),
+                R.color.fb_text_secondary,
+                12.5f,
+                false
+            ).apply { setPadding(0, 0, 0, dp(10)) })
+            RuntimeBridgeCatalog.specs().forEach { spec ->
+                addView(runtimeBridgeRow(spec))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(20) }
+        }
+    }
+
+    private fun runtimeBridgeRow(spec: RuntimeBridgeCatalog.BridgeSpec): View {
+        val version = RuntimeBridgeCatalog.selectedVersion(spec)
+        val enabled = InstrumentationSettings.isRuntimeBridgeEnabled(spec.id)
+        return surfaceCard().apply {
+            addView(LinearLayout(this@FridaBoxActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                addView(LinearLayout(this@FridaBoxActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(verticalText(spec.title, spec.description), LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                    ))
+                    addView(SwitchMaterial(this@FridaBoxActivity).apply {
+                        isChecked = enabled
+                        contentDescription = getString(R.string.fb_runtime_bridge_toggle, spec.title)
+                        var rollingBack = false
+                        setOnCheckedChangeListener { button, checked ->
+                            if (rollingBack) return@setOnCheckedChangeListener
+                            if (!InstrumentationSettings.setRuntimeBridge(spec.id, checked, version)) {
+                                rollingBack = true
+                                button.isChecked = !checked
+                                rollingBack = false
+                                notify(getString(R.string.fb_runtime_bridge_save_failed))
+                            } else {
+                                notify(getString(
+                                    if (checked) R.string.fb_runtime_bridge_enabled else R.string.fb_runtime_bridge_disabled,
+                                    spec.title
+                                ))
+                            }
+                        }
+                    }, LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply { marginStart = dp(8) })
+                })
+                addView(outlineButton(getString(R.string.fb_runtime_bridge_version, version)) { button ->
+                    showRuntimeBridgeVersions(
+                        spec,
+                        RuntimeBridgeCatalog.selectedVersion(spec),
+                        button as MaterialButton
+                    )
+                }.apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(42)
+                    ).apply { topMargin = dp(10) }
+                })
+            })
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(10) }
+        }
+    }
+
+    private fun showRuntimeBridgeVersions(
+        spec: RuntimeBridgeCatalog.BridgeSpec,
+        current: String,
+        versionButton: MaterialButton
+    ) {
+        val versions = spec.versions().toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.fb_runtime_bridge_choose_version, spec.title))
+            .setSingleChoiceItems(versions, versions.indexOf(current)) { dialog, which ->
+                val enabled = InstrumentationSettings.isRuntimeBridgeEnabled(spec.id)
+                if (InstrumentationSettings.setRuntimeBridge(spec.id, enabled, versions[which])) {
+                    dialog.dismiss()
+                    versionButton.text = getString(R.string.fb_runtime_bridge_version, versions[which])
+                } else {
+                    notify(getString(R.string.fb_runtime_bridge_save_failed))
+                }
+            }
+            .setNegativeButton(getString(R.string.fb_cancel), null)
+            .show()
     }
 
     private fun installedGadgetRow(gadget: InstalledGadget, active: Boolean): View {
@@ -1518,7 +1628,7 @@ class FridaBoxActivity : AppCompatActivity() {
             runCatching { gadgetManager.select(gadget) }
                 .onSuccess {
                     notify(getString(R.string.fb_gadget_selected, gadget.version))
-                    showGadgets()
+                    showGadgets(preserveScroll = true)
                 }
                 .onFailure { notify(it.message ?: getString(R.string.fb_gadget_select_failed)) }
         }
@@ -1548,7 +1658,7 @@ class FridaBoxActivity : AppCompatActivity() {
                 installed != null -> runCatching { gadgetManager.select(installed) }
                     .onSuccess {
                         dialog.dismiss()
-                        showGadgets()
+                        showGadgets(preserveScroll = true)
                     }
                     .onFailure { notify(it.message ?: getString(R.string.fb_gadget_select_failed)) }
                 else -> {
@@ -1586,7 +1696,7 @@ class FridaBoxActivity : AppCompatActivity() {
     private fun showGadgetBrowser(abi: GadgetAbi) {
         val dialog = Dialog(this)
         val root = FrameLayout(this).apply {
-            setPadding(dp(12), dp(32), dp(12), dp(12))
+            setPadding(dp(12), dp(20), dp(12), dp(20))
             setOnClickListener { dialog.dismiss() }
         }
         val panel = surfaceCard().apply {
@@ -1637,8 +1747,8 @@ class FridaBoxActivity : AppCompatActivity() {
 
         root.addView(panel, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            (resources.displayMetrics.heightPixels * 0.82f).toInt(),
-            Gravity.BOTTOM
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            Gravity.CENTER
         ))
         dialog.setContentView(root)
         dialog.setCanceledOnTouchOutside(true)
@@ -1653,6 +1763,20 @@ class FridaBoxActivity : AppCompatActivity() {
         }
         dialog.show()
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        panel.apply {
+            alpha = 0f
+            scaleX = 0.96f
+            scaleY = 0.96f
+            translationY = dp(10).toFloat()
+            animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(280L)
+                .setInterpolator(DecelerateInterpolator(1.6f))
+                .start()
+        }
 
         val request = ++catalogRequest
         val identities = HashSet<String>()
@@ -1722,86 +1846,10 @@ class FridaBoxActivity : AppCompatActivity() {
                         if (hadSelection) R.string.fb_gadget_downloaded else R.string.fb_gadget_downloaded_selected,
                         release.version
                     ))
-                    showGadgets()
+                    showGadgets(preserveScroll = true)
                 }.onFailure { notify(getString(R.string.fb_gadget_download_failed, it.message ?: "Unknown error")) }
             }
         }
-    }
-
-    private fun showRuntime(packageHint: String? = null) {
-        screen = Screen.RUNTIME
-        resetScreen(R.id.nav_runtime, showImport = false)
-        binding.toolbar.title = getString(R.string.fb_runtime_title)
-        binding.toolbar.subtitle = getString(R.string.fb_runtime_subtitle)
-
-        val packageName = packageHint ?: settings.getString("runtime_package", null)
-        val state = settings.getString("runtime_state", "idle") ?: "idle"
-        val mode = settings.getString("runtime_mode", packageName?.let {
-            InstrumentationSettings.getModeForPackage(it)
-        } ?: InstrumentationSettings.MODE_CLEAN) ?: InstrumentationSettings.MODE_CLEAN
-        val stateColor = when (state) {
-            "local_script_active", "computer_attached" -> R.color.fb_success
-            "failed" -> R.color.fb_error
-            "waiting_for_attach", "loading_local_script" -> R.color.fb_warning
-            else -> R.color.fb_text_secondary
-        }
-
-        binding.content.addView(pageHeading(
-            getString(R.string.fb_runtime_title),
-            getString(R.string.fb_runtime_subtitle)
-        ))
-        binding.content.addView(messageCard(
-            runtimeStateLabel(state),
-            packageName ?: "No guest process has reported runtime state yet.",
-            stateColor
-        ))
-
-        if (mode == InstrumentationSettings.MODE_COMPUTER) {
-            val command = "frida -U gadget -l path/to/agent.js"
-            binding.content.addView(infoCard("Computer attach", buildString {
-                append("The guest waits at Gadget until a controller attaches.\n\n")
-                append(command)
-            }, command))
-        } else if (mode == InstrumentationSettings.MODE_LOCAL_SCRIPT) {
-            val scriptName = packageName?.let { metadata.getString("$it.scriptName", null) }
-            val scriptHash = packageName?.let { metadata.getString("$it.scriptSha", null) }
-            binding.content.addView(infoCard(
-                "On-device agent",
-                buildString {
-                    append(scriptName ?: "No agent selected")
-                    if (scriptHash != null) append("\nSHA-256  ").append(scriptHash)
-                    append("\n\nThe private agent is loaded autonomously by Frida Gadget.")
-                }
-            ))
-            if (packageName != null) {
-                binding.content.addView(outlineButton("Open agent logs") {
-                    if (!FridaBoxGuestLogOverlay.show(this, packageName)) {
-                        toast("No agent log is available for $packageName")
-                    }
-                }.apply {
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply {
-                        topMargin = dp(14)
-                    }
-                })
-            }
-        } else {
-            binding.content.addView(infoCard("Clean launch", getString(R.string.fb_mode_clean_body)))
-        }
-
-        val details = listOf(
-            "Guest package" to (packageName ?: "Not reported"),
-            "Guest process" to (settings.getString("runtime_process", "—") ?: "—"),
-            "Virtual process slot" to settings.getInt("runtime_vpid", -1).toString(),
-            "Guest source" to (settings.getString("runtime_source", "—") ?: "—"),
-            "Virtual user ID" to settings.getInt("runtime_user_id", -1).toString(),
-            "ClassLoader" to (settings.getString("runtime_class_loader", "Not reported") ?: "Not reported"),
-            "Mode" to modeLongLabel(mode),
-            "Latest error" to (settings.getString("runtime_error", "None") ?: "None")
-        )
-        binding.content.addView(detailsCard("Process registry", details))
-        binding.content.addView(outlineButton(getString(R.string.fb_refresh)) { showRuntime(packageHint) }.apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply { topMargin = dp(14) }
-        })
     }
 
     private fun showSettings() {
@@ -1820,35 +1868,25 @@ class FridaBoxActivity : AppCompatActivity() {
             setPadding(dp(18), dp(18), dp(18), dp(18))
         }
         controls.addView(body)
-        val enabled = SwitchMaterial(this).apply {
-            text = getString(R.string.fb_global_instrumentation)
-            setTextColor(color(R.color.fb_text_primary))
-            isChecked = settings.getBoolean(InstrumentationSettings.KEY_ENABLED, true)
-        }
-        val logs = SwitchMaterial(this).apply {
-            text = getString(R.string.fb_advanced_logs)
-            setTextColor(color(R.color.fb_text_primary))
-            isChecked = settings.getBoolean(InstrumentationSettings.KEY_ADVANCED_LOGS, false)
-        }
         val port = numberInput(getString(R.string.fb_base_port), settings.getInt(InstrumentationSettings.KEY_BASE_PORT, 27042))
         val count = numberInput(getString(R.string.fb_scan_count), settings.getInt(InstrumentationSettings.KEY_SCAN_COUNT, 32))
-        body.addView(enabled)
-        body.addView(logs)
         body.addView(port.first)
         body.addView(count.first)
         body.addView(primaryButton(getString(R.string.fb_save_settings)) {
             settings.edit()
-                .putBoolean(InstrumentationSettings.KEY_ENABLED, enabled.isChecked)
                 .putInt(InstrumentationSettings.KEY_BASE_PORT,
                     InstrumentationPreferenceParser.parsePort(port.second.text?.toString().orEmpty(), 27042))
                 .putInt(InstrumentationSettings.KEY_SCAN_COUNT,
                     InstrumentationPreferenceParser.parseScanCount(count.second.text?.toString().orEmpty(), 32))
-                .putBoolean(InstrumentationSettings.KEY_ADVANCED_LOGS, logs.isChecked)
                 .apply()
             notify("Settings saved")
         }.apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply { topMargin = dp(12) }
         })
+        controls.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(14) }
         binding.content.addView(controls)
         binding.content.addView(messageCard(
             getString(R.string.fb_security_title),
@@ -1902,50 +1940,6 @@ class FridaBoxActivity : AppCompatActivity() {
         }
     }
 
-    private fun infoCard(title: String, bodyText: String, copyValue: String? = null): View {
-        val card = surfaceCard()
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            addView(labelText(title, R.color.fb_text_primary, 16f, true))
-            addView(labelText(bodyText, R.color.fb_text_secondary, 13f, false).apply {
-                setPadding(0, dp(8), 0, 0)
-                setTextIsSelectable(true)
-            })
-            if (copyValue != null) addView(outlineButton(getString(R.string.fb_copy_command)) {
-                (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager)
-                    .setPrimaryClip(ClipData.newPlainText("FridaBox command", copyValue))
-                notify("Command copied")
-            }.apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46)).apply { topMargin = dp(12) }
-            })
-        }
-        card.addView(body)
-        card.layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(14) }
-        return card
-    }
-
-    private fun detailsCard(title: String, rows: List<Pair<String, String>>): View {
-        val card = surfaceCard()
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            addView(labelText(title, R.color.fb_text_primary, 16f, true))
-        }
-        rows.forEach { (label, value) ->
-            body.addView(labelText(label.uppercase(Locale.ROOT), R.color.fb_text_secondary, 10.5f, true).apply {
-                setPadding(0, dp(13), 0, 0)
-            })
-            body.addView(labelText(value, R.color.fb_text_primary, 13f, false).apply { setTextIsSelectable(true) })
-        }
-        card.addView(body)
-        card.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        return card
-    }
-
     private fun verticalText(title: String, subtitle: String): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1997,7 +1991,7 @@ class FridaBoxActivity : AppCompatActivity() {
             strokeColor = checkedColors(color(R.color.fb_primary), color(R.color.fb_glass_outline))
             backgroundTintList = checkedColors(color(R.color.fb_primary), color(R.color.fb_glass_surface_soft))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
-        }
+        }.also(::installPressMotion)
     }
 
     private fun primaryButton(label: String, action: (View) -> Unit): MaterialButton {
@@ -2014,7 +2008,7 @@ class FridaBoxActivity : AppCompatActivity() {
             strokeWidth = dp(1)
             elevation = dp(3).toFloat()
             setOnClickListener(action)
-        }
+        }.also(::installPressMotion)
     }
 
     private fun outlineButton(label: String, action: (View) -> Unit): MaterialButton {
@@ -2029,7 +2023,7 @@ class FridaBoxActivity : AppCompatActivity() {
             strokeColor = ColorStateList.valueOf(color(R.color.fb_glass_outline))
             backgroundTintList = ColorStateList.valueOf(color(R.color.fb_glass_surface_soft))
             setOnClickListener(action)
-        }
+        }.also(::installPressMotion)
     }
 
     private fun iconButton(iconResource: Int, description: String, action: () -> Unit): MaterialButton {
@@ -2044,15 +2038,120 @@ class FridaBoxActivity : AppCompatActivity() {
         }
     }
 
-    private fun resetScreen(navId: Int, showImport: Boolean): Int {
+    private fun installPressMotion(view: View) {
+        view.isHapticFeedbackEnabled = true
+        view.setOnTouchListener { target, event ->
+            if (!target.isEnabled) return@setOnTouchListener false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    target.animate().cancel()
+                    target.performHapticFeedback(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            HapticFeedbackConstants.CONTEXT_CLICK
+                        } else {
+                            HapticFeedbackConstants.VIRTUAL_KEY
+                        }
+                    )
+                    target.animate()
+                        .scaleX(0.965f)
+                        .scaleY(0.965f)
+                        .alpha(0.9f)
+                        .translationY(dp(1).toFloat())
+                        .setDuration(85L)
+                        .setInterpolator(AccelerateInterpolator(1.4f))
+                        .start()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    target.animate().cancel()
+                    target.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(240L)
+                        .setInterpolator(OvershootInterpolator(1.45f))
+                        .start()
+                }
+            }
+            false
+        }
+    }
+
+    private fun animateNavigationSelection(itemId: Int) {
+        updateNavigationIconEmphasis(itemId)
+        val item = binding.bottomNavigation.findViewById<View>(itemId) ?: return
+        val target = firstImageDescendant(item) ?: item
+        target.animate().cancel()
+        target.scaleX = 0.9f
+        target.scaleY = 0.9f
+        target.translationY = dp(2).toFloat()
+        target.animate()
+            .scaleX(1.18f)
+            .scaleY(1.18f)
+            .translationY(0f)
+            .setDuration(360L)
+            .setInterpolator(OvershootInterpolator(1.8f))
+            .start()
+    }
+
+    private fun updateNavigationIconEmphasis(selectedItemId: Int) {
+        intArrayOf(R.id.nav_workspace, R.id.nav_gadgets, R.id.nav_settings).forEach { itemId ->
+            val item = binding.bottomNavigation.findViewById<View>(itemId) ?: return@forEach
+            val icon = firstImageDescendant(item) ?: return@forEach
+            icon.animate().cancel()
+            val scale = if (itemId == selectedItemId) 1.18f else 1f
+            icon.scaleX = scale
+            icon.scaleY = scale
+            icon.translationY = 0f
+        }
+    }
+
+    private fun firstImageDescendant(view: View): ImageView? {
+        if (view is ImageView) return view
+        if (view !is ViewGroup) return null
+        for (index in 0 until view.childCount) {
+            firstImageDescendant(view.getChildAt(index))?.let { return it }
+        }
+        return null
+    }
+
+    private fun animateContentIn() {
+        binding.content.animate().cancel()
+        binding.content.alpha = 0.62f
+        binding.content.translationY = dp(8).toFloat()
+        binding.content.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(260L)
+            .setInterpolator(DecelerateInterpolator(1.5f))
+            .start()
+    }
+
+    private fun restoreScrollBeforeNextDraw(scrollY: Int) {
+        if (scrollY <= 0) return
+        val scroll = binding.contentScroll
+        scroll.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (scroll.viewTreeObserver.isAlive) {
+                    scroll.viewTreeObserver.removeOnPreDrawListener(this)
+                }
+                val maximum = (scroll.getChildAt(0)?.height ?: 0) - scroll.height
+                scroll.scrollTo(0, scrollY.coerceIn(0, maximum.coerceAtLeast(0)))
+                return true
+            }
+        })
+    }
+
+    private fun resetScreen(navId: Int, showImport: Boolean, resetScroll: Boolean = true): Int {
         dismissImportActions(immediate = true)
         screenGeneration += 1
         binding.content.removeAllViews()
-        binding.contentScroll.scrollTo(0, 0)
+        if (resetScroll) binding.contentScroll.scrollTo(0, 0)
         binding.importFabIcon.isVisible = showImport
         changingNavigation = true
         binding.bottomNavigation.selectedItemId = navId
         changingNavigation = false
+        updateNavigationIconEmphasis(navId)
         setLoading(false)
         return screenGeneration
     }
@@ -2068,26 +2167,10 @@ class FridaBoxActivity : AppCompatActivity() {
         )
     }
 
-    private fun runtimeStateLabel(state: String): String = when (state) {
-        "local_script_active" -> "On-device agent active"
-        "computer_attached" -> "Computer attached"
-        "waiting_for_attach" -> "Waiting for computer"
-        "loading_local_script" -> "Loading on-device agent"
-        "failed" -> "Instrumentation failed"
-        "disabled" -> "Clean runtime"
-        else -> "Runtime idle"
-    }
-
     private fun modeShortLabel(mode: String): String = when (mode) {
         InstrumentationSettings.MODE_LOCAL_SCRIPT -> getString(R.string.fb_mode_local)
         InstrumentationSettings.MODE_CLEAN -> getString(R.string.fb_mode_clean)
         else -> getString(R.string.fb_mode_computer)
-    }
-
-    private fun modeLongLabel(mode: String): String = when (mode) {
-        InstrumentationSettings.MODE_LOCAL_SCRIPT -> getString(R.string.fb_mode_local_title)
-        InstrumentationSettings.MODE_CLEAN -> getString(R.string.fb_mode_clean_title)
-        else -> getString(R.string.fb_mode_computer_title)
     }
 
     private fun modeColor(mode: String, background: Boolean): Int {
@@ -2132,13 +2215,14 @@ class FridaBoxActivity : AppCompatActivity() {
     }
     private fun notify(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).apply {
+            setAnchorView(binding.bottomNavigation)
             setTextColor(color(R.color.fb_text_primary))
             view.background = ContextCompat.getDrawable(this@FridaBoxActivity, R.drawable.bg_glass_popup)
             view.elevation = dp(12).toFloat()
             show()
         }
     }
-    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    private fun toast(message: String) = notify(message)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private fun humanSize(bytes: Long): String {

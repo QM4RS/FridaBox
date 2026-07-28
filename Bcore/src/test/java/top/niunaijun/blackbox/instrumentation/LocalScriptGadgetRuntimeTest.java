@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 public class LocalScriptGadgetRuntimeTest {
     @Test
@@ -55,9 +56,44 @@ public class LocalScriptGadgetRuntimeTest {
     }
 
     @Test
+    public void selectedRuntimeBridgeRunsBeforeTheUserAgent() throws Exception {
+        String bridgeBody = "globalThis.Java = { available: true };";
+        byte[] bridgeBundle = bundle("/bridges/java.js", bridgeBody);
+        String source = "console.log(Java.available);";
+        String result = new String(LocalScriptGadgetRuntime.instrumentAgent(
+                source.getBytes(StandardCharsets.UTF_8),
+                "console.log('log bridge');\n",
+                Collections.singletonList(bridgeBundle)), StandardCharsets.UTF_8);
+
+        assertTrue(result.indexOf(bridgeBody) < result.indexOf(source));
+        assertTrue(result.contains("(function (send) {\n" + source));
+    }
+
+    @Test
+    public void entryModuleExtractionRejectsPlainJavaScript() {
+        boolean rejected = false;
+        try {
+            LocalScriptGadgetRuntime.extractEntryModule("plain".getBytes(StandardCharsets.UTF_8));
+        } catch (Exception expected) {
+            rejected = true;
+        }
+        assertTrue(rejected);
+    }
+
+    @Test
     public void privatePathCheckRejectsSiblingPrefix() {
         File root = new File("/data/user/0/host/files/fridabox-agents");
         assertTrue(LocalScriptGadgetRuntime.isInside(root, new File(root, "guest/agent.js")));
         assertFalse(LocalScriptGadgetRuntime.isInside(root, new File(root.getPath() + "-other/agent.js")));
+    }
+
+    private static byte[] bundle(String name, String body) {
+        byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+        String header = "\uD83D\uDCE6\n" + bodyBytes.length + " " + name + "\n\u2704\n";
+        byte[] headerBytes = header.getBytes(StandardCharsets.UTF_8);
+        byte[] result = new byte[headerBytes.length + bodyBytes.length];
+        System.arraycopy(headerBytes, 0, result, 0, headerBytes.length);
+        System.arraycopy(bodyBytes, 0, result, headerBytes.length, bodyBytes.length);
+        return result;
     }
 }

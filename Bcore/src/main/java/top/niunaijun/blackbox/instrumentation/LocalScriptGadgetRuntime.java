@@ -8,6 +8,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
 
 import top.niunaijun.blackbox.BlackBoxCore;
 
@@ -41,7 +43,10 @@ final class LocalScriptGadgetRuntime {
         File log = new File(directory, LOG_NAME);
         writeUtf8Atomically(log, "");
         File instrumentedAgent = new File(directory, INSTRUMENTED_AGENT_NAME);
-        writeInstrumentedAgentAtomically(instrumentedAgent, script, buildLogBridge(log));
+        List<byte[]> runtimeBridges = RuntimeBridgeCatalog.loadEnabledBundles(
+                context, InstrumentationSettings.getSelectedGadgetVersion());
+        writeInstrumentedAgentAtomically(
+                instrumentedAgent, script, buildLogBridge(log), runtimeBridges);
         if (!instrumentedAgent.setReadable(true, true) || !instrumentedAgent.setWritable(false, false)) {
             throw new IOException("Unable to secure the instrumented JavaScript agent");
         }
@@ -154,7 +159,7 @@ final class LocalScriptGadgetRuntime {
     }
 
     private static void writeInstrumentedAgentAtomically(
-            File destination, File source, String bridge) throws IOException {
+            File destination, File source, String bridge, List<byte[]> runtimeBridges) throws IOException {
         File temporary = new File(destination.getParentFile(), destination.getName() + ".partial");
         if (temporary.exists() && !temporary.delete()) {
             throw new IOException("Unable to replace temporary JavaScript agent");
@@ -164,7 +169,7 @@ final class LocalScriptGadgetRuntime {
             byte[] buffer = new byte[64 * 1024];
             int count;
             while ((count = input.read(buffer)) >= 0) sourceBytes.write(buffer, 0, count);
-            byte[] instrumented = instrumentAgent(sourceBytes.toByteArray(), bridge);
+            byte[] instrumented = instrumentAgent(sourceBytes.toByteArray(), bridge, runtimeBridges);
             try (FileOutputStream output = new FileOutputStream(temporary)) {
                 output.write(instrumented);
                 output.getFD().sync();
@@ -174,9 +179,22 @@ final class LocalScriptGadgetRuntime {
     }
 
     static byte[] instrumentAgent(byte[] source, String bridge) throws IOException {
+        return instrumentAgent(source, bridge, Collections.<byte[]>emptyList());
+    }
+
+    static byte[] instrumentAgent(
+            byte[] source, String bridge, List<byte[]> runtimeBridgeBundles) throws IOException {
         int offset = injectionOffset(source);
         if (offset < 0) throw new IOException("Invalid Frida bundle header");
-        byte[] prefix = (bridge + "(function (send) {\n").getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream prefixOutput = new ByteArrayOutputStream();
+        prefixOutput.write(bridge.getBytes(StandardCharsets.UTF_8));
+        for (byte[] bundle : runtimeBridgeBundles) {
+            byte[] body = extractEntryModule(bundle);
+            prefixOutput.write(body, 0, body.length);
+            prefixOutput.write('\n');
+        }
+        prefixOutput.write("(function (send) {\n".getBytes(StandardCharsets.UTF_8));
+        byte[] prefix = prefixOutput.toByteArray();
         byte[] suffix = "\n})(globalThis.__fridaboxSend);\n".getBytes(StandardCharsets.UTF_8);
         if (offset > 0) return instrumentBundle(source, prefix, suffix, offset);
         ByteArrayOutputStream output = new ByteArrayOutputStream(source.length + prefix.length + suffix.length);
@@ -186,11 +204,28 @@ final class LocalScriptGadgetRuntime {
         return output.toByteArray();
     }
 
+    static byte[] extractEntryModule(byte[] bundle) throws IOException {
+        int bodyOffset = injectionOffset(bundle);
+        if (bodyOffset <= 0) throw new IOException("Runtime bridge is not a Frida bundle");
+        int lengthStart = moduleLengthStart(bundle, bodyOffset);
+        int lengthEnd = lengthStart;
+        long declaredLength = 0;
+        while (lengthEnd < bodyOffset && bundle[lengthEnd] >= '0' && bundle[lengthEnd] <= '9') {
+            declaredLength = declaredLength * 10 + (bundle[lengthEnd] - '0');
+            if (declaredLength > Integer.MAX_VALUE) throw new IOException("Invalid Frida bundle module length");
+            lengthEnd++;
+        }
+        if (lengthEnd == lengthStart || lengthEnd >= bodyOffset || bundle[lengthEnd] != ' ') {
+            throw new IOException("Invalid Frida bundle module length");
+        }
+        long bodyEndLong = bodyOffset + declaredLength;
+        if (bodyEndLong > bundle.length) throw new IOException("Invalid Frida bundle module length");
+        return java.util.Arrays.copyOfRange(bundle, bodyOffset, (int) bodyEndLong);
+    }
+
     private static byte[] instrumentBundle(
             byte[] source, byte[] prefix, byte[] suffix, int bodyOffset) throws IOException {
-        int lengthStart = 0;
-        while (lengthStart < bodyOffset && source[lengthStart] != '\n') lengthStart++;
-        lengthStart++;
+        int lengthStart = moduleLengthStart(source, bodyOffset);
         int lengthEnd = lengthStart;
         long declaredLength = 0;
         while (lengthEnd < bodyOffset && source[lengthEnd] >= '0' && source[lengthEnd] <= '9') {
@@ -218,6 +253,13 @@ final class LocalScriptGadgetRuntime {
         output.write(suffix, 0, suffix.length);
         output.write(source, bodyEnd, source.length - bodyEnd);
         return output.toByteArray();
+    }
+
+    private static int moduleLengthStart(byte[] source, int bodyOffset) throws IOException {
+        int lengthStart = 0;
+        while (lengthStart < bodyOffset && source[lengthStart] != '\n') lengthStart++;
+        if (lengthStart >= bodyOffset) throw new IOException("Invalid Frida bundle header");
+        return lengthStart + 1;
     }
 
     static int injectionOffset(byte[] source) {

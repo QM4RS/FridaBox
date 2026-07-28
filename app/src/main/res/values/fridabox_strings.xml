@@ -4,7 +4,6 @@
     <string name="fb_brand_tagline">Mobile instrumentation workspace</string>
     <string name="fb_nav_workspace">Workspace</string>
     <string name="fb_nav_gadgets">Gadgets</string>
-    <string name="fb_nav_runtime">Runtime</string>
     <string name="fb_nav_settings">Settings</string>
     <string name="fb_import">Import</string>
     <string name="fb_import_from_apps">Import from apps</string>
@@ -29,21 +28,15 @@
     <string name="fb_more">Manage</string>
     <string name="fb_no_script">No JavaScript agent selected</string>
     <string name="fb_script_ready">Agent ready</string>
-    <string name="fb_runtime_title">Runtime</string>
-    <string name="fb_runtime_subtitle">Latest guest process and instrumentation state</string>
     <string name="fb_settings_title">Settings</string>
     <string name="fb_settings_subtitle">Connection defaults and product information</string>
     <string name="fb_save_settings">Save settings</string>
-    <string name="fb_global_instrumentation">Allow instrumentation</string>
-    <string name="fb_advanced_logs">Show advanced runtime details</string>
     <string name="fb_base_port">Gadget base port</string>
     <string name="fb_scan_count">Port discovery range</string>
     <string name="fb_security_title">Run only agents you trust</string>
     <string name="fb_security_body">An on-device agent executes inside the virtual guest process and has the same access as that process. FridaBox stores a private byte-for-byte copy of the selected file.</string>
     <string name="fb_about_title">Independent by design</string>
     <string name="fb_about_body">FridaBox combines a private Android virtualization layer with Frida Gadget. It does not modify imported APKs and it does not require root.</string>
-    <string name="fb_copy_command">Copy command</string>
-    <string name="fb_refresh">Refresh</string>
     <string name="fb_choose_trusted_title">Choose a trusted JavaScript agent?</string>
     <string name="fb_choose_trusted_body">The file will be copied into FridaBox private storage and executed automatically whenever this guest starts in On-device mode.</string>
     <string name="fb_choose">Choose file</string>
@@ -51,7 +44,6 @@
     <string name="fb_computer_launch_title">Ready to attach from a computer?</string>
     <string name="fb_computer_launch_body">The guest will pause before its Application starts. Connect with Frida to resume it.</string>
     <string name="fb_clear_data">Clear guest data</string>
-    <string name="fb_runtime_details">Runtime details</string>
     <string name="fb_remove_guest">Remove guest</string>
     <string name="fb_remove_title">Remove this guest?</string>
     <string name="fb_remove_body">The virtual app, its virtual data, and its saved on-device agent will be removed from FridaBox. The Android PackageManager installation is not changed.</string>
@@ -78,4 +70,12 @@
     <string name="fb_gadget_download_failed">Gadget download failed: %1$s</string>
     <string name="fb_catalog_failed_body">Unable to load compatible Gadget releases from GitHub.</string>
     <string name="fb_gadget_unsupported_title">Unsupported device ABI</string>
+    <string name="fb_runtime_bridges">Runtime bridges</string>
+    <string name="fb_runtime_bridges_body">Available for Gadget %1$s. Enabled bridges are embedded into the private on-device agent at the next launch.</string>
+    <string name="fb_runtime_bridge_toggle">Enable %1$s bridge</string>
+    <string name="fb_runtime_bridge_version">Version %1$s</string>
+    <string name="fb_runtime_bridge_choose_version">Choose %1$s version</string>
+    <string name="fb_runtime_bridge_enabled">%1$s bridge enabled for the next on-device launch</string>
+    <string name="fb_runtime_bridge_disabled">%1$s bridge disabled</string>
+    <string name="fb_runtime_bridge_save_failed">Unable to save runtime bridge settings</string>
 </resources>

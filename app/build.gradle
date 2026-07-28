@@ -132,6 +132,26 @@ tasks.register("verifyInstrumentationOrdering") {
     }
 }
 
+tasks.register("verifyRuntimeBridgeAssets") {
+    doLast {
+        def bridgeAssets = [
+                "java-7.0.11.js", "java-7.0.12.js", "java-7.0.13.js",
+                "il2cpp-0.12.2.js", "il2cpp-0.13.0.js", "il2cpp-0.13.1.js"
+        ]
+        def bridgeRoot = file("src/main/assets/fridabox/bridges")
+        bridgeAssets.each { name ->
+            def asset = new File(bridgeRoot, name)
+            if (!asset.isFile() || asset.length() == 0 || asset.length() > 2 * 1024 * 1024) {
+                throw new GradleException("Missing or invalid runtime bridge asset: ${name}")
+            }
+            def source = new String(asset.bytes, java.nio.charset.StandardCharsets.UTF_8)
+            if (!source.startsWith("📦\n") || !source.contains("\n✄\n")) {
+                throw new GradleException("Runtime bridge is not a valid frida-compile bundle: ${name}")
+            }
+        }
+    }
+}
+
 tasks.register("verifyTablerAndroidIcons", Exec) {
     workingDir(rootProject.projectDir)
     def nodeExecutable = System.getProperty("os.name").toLowerCase().contains("windows") ? "node.exe" : "node"
@@ -157,7 +177,7 @@ tasks.register("verifyDemoGuestUnmodified") {
 
 tasks.named("check").configure {
     dependsOn("verifyDebugApkHasNoGadget", "verifyInstrumentationOrdering",
-            "verifyDemoGuestUnmodified", "verifyTablerAndroidIcons")
+            "verifyDemoGuestUnmodified", "verifyTablerAndroidIcons", "verifyRuntimeBridgeAssets")
 }
 
 dependencies {

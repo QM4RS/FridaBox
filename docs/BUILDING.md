@@ -27,6 +27,10 @@ Frida 17 no longer bundles runtime bridges into API-loaded GumJS agents. The
 compiled files under `scripts/dist/` are reproducible from the source scripts,
 `package.json`, and `package-lock.json`.
 
+The same build command generates the optional Java and IL2CPP bridge assets
+used by On-device mode. Their version catalog and composition model are
+documented in [RUNTIME_BRIDGES.md](RUNTIME_BRIDGES.md).
+
 UI control icons are generated from pinned `@tabler/icons` sources with
 `npm run generate:android-icons`. The app `check` task runs the matching
 verification script and fails if a committed Android vector is out of sync.

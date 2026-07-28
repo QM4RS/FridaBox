@@ -30,6 +30,18 @@ so their active base and split APKs remain available to the virtual runtime.
 Instrumented launches require an active Gadget. Clean mode remains available
 without one. Gadget binaries are never bundled in the FridaBox APK.
 
+## Select runtime bridges
+
+When the active Gadget is 17.0.0 or newer, the **Gadgets** screen shows Java and
+IL2CPP runtime-bridge controls. Enable either bridge and select one of its
+offline pinned versions. The choice is composed into the generated private
+agent on the next **On-device** launch, so a plain script may use the `Java` or
+`Il2Cpp` global without importing that package itself.
+
+The switch does not mutate the imported script and cannot change a process that
+is already running. It does not apply to **Computer** mode, where each script is
+created by the attaching Frida client in its own JavaScript isolate.
+
 ## Choose a launch mode
 
 Every guest remembers one of three independent modes:

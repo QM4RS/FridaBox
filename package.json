@@ -2,11 +2,18 @@
   "name": "fridabox-agents",
   "private": true,
   "scripts": {
+    "build:frida-agents": "python tools/build_frida_agents.py",
     "generate:android-icons": "node tools/generate_tabler_android_icons.mjs",
     "verify:android-icons": "node tools/generate_tabler_android_icons.mjs --check"
   },
   "dependencies": {
-    "frida-java-bridge": "7.0.13"
+    "frida-java-bridge": "7.0.13",
+    "frida-java-bridge-7-0-11": "npm:frida-java-bridge@7.0.11",
+    "frida-java-bridge-7-0-12": "npm:frida-java-bridge@7.0.12",
+    "frida-java-bridge-7-0-13": "npm:frida-java-bridge@7.0.13",
+    "frida-il2cpp-bridge-0-12-2": "npm:frida-il2cpp-bridge@0.12.2",
+    "frida-il2cpp-bridge-0-13-0": "npm:frida-il2cpp-bridge@0.13.0",
+    "frida-il2cpp-bridge-0-13-1": "npm:frida-il2cpp-bridge@0.13.1"
   },
   "devDependencies": {
     "@tabler/icons": "3.45.0",

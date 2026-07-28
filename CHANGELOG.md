@@ -5,6 +5,34 @@ versioning for its public releases.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-07-28
+
+### Added
+
+- Optional, version-selectable Java and Unity IL2CPP runtime bridges for Frida
+  Gadget 17 and newer, embedded privately into the on-device agent at launch.
+- Reproducible bridge build inputs and packaged Java 7.0.11-7.0.13 and IL2CPP
+  0.12.2, 0.13.0, and 0.13.1 bridge versions.
+
+### Changed
+
+- Simplified the application navigation to Workspace, Gadgets, and Settings by
+  removing the redundant Runtime destination.
+- Refined the liquid-glass bottom navigation with icon-only active indicators,
+  heavier active icons, tactile button motion, and animated screen transitions.
+- Centered the Gadget version browser and moved in-app notifications above the
+  bottom navigation.
+- Simplified Settings by removing obsolete global instrumentation and advanced
+  runtime-detail controls.
+
+### Fixed
+
+- Preserve the Gadget screen scroll position when selecting Gadget or bridge
+  versions instead of rebuilding at the top of the page.
+- Keep bridge enablement and version choices device-local and apply them to the
+  next private on-device agent without requiring imports in user scripts.
+- Restore clear spacing between the Settings controls and security warning.
+
 ## [4.1.1] - 2026-07-28
 
 ### Fixed

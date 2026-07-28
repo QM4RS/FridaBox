@@ -1,6 +1,30 @@
 # Test results
 
-Validation date: 2026-07-27
+Validation date: 2026-07-28
+
+## FridaBox 4.2.0 release validation
+
+The signed 4.2.0 release was built after the complete app check and app/Bcore
+unit-test suites passed. Each split contains exactly one native ABI, reports
+`versionCode 403` and `versionName 4.2.0`, is 16 KiB ZIP-aligned, and verifies
+with APK Signature Schemes v1 and v2. All four APKs use the same production
+certificate as 4.1.0 and 4.1.1 (SHA-256
+`f8db4dcf0f9272bf75ac170e382ee31ca17fea2606a18aaed0cc4040423cb444`).
+
+| ABI | Size | SHA-256 |
+| --- | ---: | --- |
+| `arm64-v8a` | 3,263,922 bytes | `e37af8801a3bb12c04db2140c09dfb843f8e105c04aa0c0f88f5731fa3e0cabb` |
+| `armeabi-v7a` | 3,246,369 bytes | `427b2a4328624cda5881267c4bde00088c2d7df2296f49c5d66cbf4c929b64fc` |
+| `x86` | 3,288,071 bytes | `8883788d694d42339332f495cbdb8b043198c52648ac168557f0d66dca0beab8` |
+| `x86_64` | 3,293,258 bytes | `17695849ea9ed7884d2e1a777e9cfbf47529d84ade7a8c6e9746269e9d96b249` |
+
+The updated ARM64 debug build was also installed on the Samsung SM-S928B
+running Android 16/API 36. Runtime-bridge controls, version selection without a
+scroll jump, the centered Gadget browser, Settings cleanup, raised Snackbar,
+and icon-only animated bottom-navigation selection were exercised without a
+fatal exception. The other three ABI variants were build-, package-, ELF-,
+signature-, alignment-, and regression-test-validated but were not exercised
+on physical hardware in this release cycle.
 
 ## Host validation
 

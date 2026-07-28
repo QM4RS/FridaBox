@@ -17,6 +17,10 @@ public final class InstrumentationSettings {
     public static final String KEY_GADGET_VERSION = "selected_gadget_version";
     public static final String KEY_GADGET_ABI = "selected_gadget_abi";
     public static final String KEY_GADGET_SHA256 = "selected_gadget_sha256";
+    public static final String KEY_JAVA_BRIDGE_ENABLED = "runtime_bridge_java_enabled";
+    public static final String KEY_JAVA_BRIDGE_VERSION = "runtime_bridge_java_version";
+    public static final String KEY_IL2CPP_BRIDGE_ENABLED = "runtime_bridge_il2cpp_enabled";
+    public static final String KEY_IL2CPP_BRIDGE_VERSION = "runtime_bridge_il2cpp_version";
     private static final String PACKAGE_PREFIX = "package_enabled_";
     private static final String PACKAGE_MODE_PREFIX = "package_mode_";
     private static final String PACKAGE_SCRIPT_PREFIX = "package_script_";
@@ -148,6 +152,41 @@ public final class InstrumentationSettings {
                 .remove(KEY_GADGET_ABI)
                 .remove(KEY_GADGET_SHA256)
                 .commit();
+    }
+
+    public static boolean isRuntimeBridgeEnabled(String bridgeId) {
+        String key = runtimeBridgeEnabledKey(bridgeId);
+        return key != null && preferences().getBoolean(key, false);
+    }
+
+    public static String getRuntimeBridgeVersion(String bridgeId, String fallback) {
+        String key = runtimeBridgeVersionKey(bridgeId);
+        return key == null ? fallback : preferences().getString(key, fallback);
+    }
+
+    public static boolean setRuntimeBridge(String bridgeId, boolean enabled, String version) {
+        RuntimeBridgeCatalog.BridgeSpec spec = RuntimeBridgeCatalog.find(bridgeId);
+        String enabledKey = runtimeBridgeEnabledKey(bridgeId);
+        String versionKey = runtimeBridgeVersionKey(bridgeId);
+        if (spec == null || !spec.supportsVersion(version) || enabledKey == null || versionKey == null) {
+            return false;
+        }
+        return preferences().edit()
+                .putBoolean(enabledKey, enabled)
+                .putString(versionKey, version)
+                .commit();
+    }
+
+    private static String runtimeBridgeEnabledKey(String bridgeId) {
+        if (RuntimeBridgeCatalog.JAVA_ID.equals(bridgeId)) return KEY_JAVA_BRIDGE_ENABLED;
+        if (RuntimeBridgeCatalog.IL2CPP_ID.equals(bridgeId)) return KEY_IL2CPP_BRIDGE_ENABLED;
+        return null;
+    }
+
+    private static String runtimeBridgeVersionKey(String bridgeId) {
+        if (RuntimeBridgeCatalog.JAVA_ID.equals(bridgeId)) return KEY_JAVA_BRIDGE_VERSION;
+        if (RuntimeBridgeCatalog.IL2CPP_ID.equals(bridgeId)) return KEY_IL2CPP_BRIDGE_VERSION;
+        return null;
     }
 
     static int clamp(int value, int minimum, int maximum, int fallback) {
