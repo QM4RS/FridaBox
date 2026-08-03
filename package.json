@@ -16,7 +16,7 @@
     "frida-il2cpp-bridge-0-13-1": "npm:frida-il2cpp-bridge@0.13.1"
   },
   "devDependencies": {
-    "@tabler/icons": "3.45.0",
+    "@tabler/icons": "3.46.0",
     "frida-compile": "19.0.5"
   }
 }
