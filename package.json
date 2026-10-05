@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "@tabler/icons": "3.45.0",
-    "frida-compile": "19.0.5"
+    "frida-compile": "19.0.6"
   }
 }
